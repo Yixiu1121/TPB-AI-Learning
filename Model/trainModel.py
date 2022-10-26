@@ -1,16 +1,16 @@
 
 from abc import ABC, abstractmethod
-from cProfile import label
-from distutils import ccompiler
+from gc import callbacks
 from msilib.schema import Feature
 import re
 from sqlite3 import Timestamp
 from tabnanny import verbose
 from tokenize import PlainToken
 import numpy as np
+from sqlalchemy import true
 from Control.ImportData import *
-# from tensorflow import keras
 from tensorflow.keras import Sequential,losses,optimizers
+from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.layers import LSTM,Dropout,Dense,Flatten,RNN,SimpleRNN
 from tensorflow.keras.wrappers import scikit_learn
 from sklearn.model_selection import GridSearchCV
@@ -105,8 +105,8 @@ class L(Train):
         self._Normalization()
         self.X_train,self.Y_train = self._FeatureScaling("train") #切分訓練
         self.X_test,self.Y_test = self._FeatureScaling("test") #切分測試
-        self.X_train = self._Reshape(self.X_train)  #訓練
-        self.X_test= self._Reshape(self.X_test)  #測試
+        # self.X_train = self._Reshape(self.X_train)  #訓練
+        # self.X_test= self._Reshape(self.X_test)  #測試
 
     def SVMProcessing(self):
         "SVM 資料處理"
@@ -135,13 +135,17 @@ class L(Train):
             trainOrtest = self.training_set_scaled
         if trainOrtest == "test":
             trainOrtest = self.test_set_scaled
+        return self._Split(time=self.para.TStep,trainOrtest=trainOrtest)
+
+    def _Split(self,time,trainOrtest):
+        "切分不同時間步長資料"
         x = []   #預測點的前 N 天的資料
         y = []   #預測點
-        for i in range(self.para.TStep+self.para.TPlus-1, len(trainOrtest)):  # 1258 是訓練集總數
-            x.append(trainOrtest[i+1-self.para.TStep-self.para.TPlus:i-self.para.TPlus+1,:-1])
-            y.append(trainOrtest[i,-1])
+        for i in range(time, len(trainOrtest)-self.para.TPlus):  # 1258 是訓練集總數
+            x.append(trainOrtest[i-self.para.TStep:i+1,:]) # T-Tstep ~ T
+            y.append(trainOrtest[i+self.para.TPlus,-1]) # T+N
         x, y = np.array(x), np.array(y)  # 轉成numpy array的格式，以利輸入 RNN
-        return x, y
+        return x, y    
 
     def _Reshape(self,x_2D):
         "二維轉成三維"
@@ -169,7 +173,7 @@ class L(Train):
         
         if name == "LSTM":
             model = Sequential()
-            model.add(LSTM(16, input_shape=(self.para.TStep, self.para.FeatureN), return_sequences=True))
+            model.add(LSTM(16, input_shape=(self.para.TStep+1, self.para.FeatureN), return_sequences=True))
             model.add(LSTM(8, return_sequences=True))
             # model.add(LSTM(8, return_sequences=True)) 
             # model.add(Dropout(0.3))
@@ -181,7 +185,7 @@ class L(Train):
 
             model = Sequential()
             # model.add(Flatten())
-            model.add(SimpleRNN(8,input_shape = (self.para.TStep, self.para.FeatureN)))
+            model.add(SimpleRNN(8,input_shape = (self.para.TStep+1, self.para.FeatureN)))
             # model.add(RNN(16,activation='relu'))
             model.add(Dense(16,activation='relu'))
             model.add(Dense(1,kernel_initializer='normal', activation=self.gpara.activate))
@@ -203,7 +207,8 @@ class L(Train):
 
     def _FittingModel(self):
         "注意:驗證集切分依順序"
-        self.history = self.model.fit(self.X_train, self.Y_train, epochs = self.gpara.epochs, batch_size = self.gpara.btcsz,validation_split=0.2)
+        stopping = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=40, min_delta=0.0001, restore_best_weights=True) ## monitor = acc 
+        self.history = self.model.fit(self.X_train, self.Y_train, epochs = self.gpara.epochs, batch_size = self.gpara.btcsz,validation_split=0.2,callbacks = [stopping])
         return  self.model
     
     def _SVMFitting(self):
@@ -231,8 +236,8 @@ class L(Train):
         return grit
 
     def PlotResult(self):
-        if self.para.ModelName!='SVM':
-            self._LossFun() 
+        # if self.para.ModelName!='SVM':
+        #     self._LossFun() 
         self._ForcastCurve()
         return super().PlotResult()
     
@@ -242,17 +247,27 @@ class L(Train):
         plt.plot(self.history.history['val_loss'],label='Val Loss')
         plt.plot(self.history.history['loss'],label='Loss')
         plt.legend()
-        return plt.savefig(f'{self.para.TPlus}LossCurve {self.para.ModelName}.png')
+        plt.savefig(f'{self.para.TPlus}LossCurve {self.para.ModelName}.png')
+        return plt.close()
         
-    def _ForcastCurve(self):
+    def _ForcastCurve(self, fileName=""):
         x = np.arange(len(self.Y_test))
         # 反正規
         YT = (self._InverseCol(self.Y_test)).flatten()
         YP = self._InverseCol(self.forcasting).flatten()
-        d = {'Observation':YT,'Forcast':YP}
+        d = {   'Observation':YT,'Forcast':YP}
+        g = {   'activate':self.gpara.activate, 
+                'opt':self.gpara.opt,
+                'epochs':self.gpara.opt,
+                'batchSize':self.gpara.btcsz,
+                'loss':self.gpara.loss,
+                'Tstep':self.para.TStep
+                }
         # 合併觀測值&預測值+指標 字典
-        res = {**d, **self.Index(YT,YP)} 
-        pd.DataFrame(res).to_csv(f"{self.para.TPlus}結果{self.para.ModelName}.csv",index=False, header = True)
+        res = {**d, **self.Index(YT,YP), **g} 
+        path = f"{self.para.ModelName}\{self.para.TPlus}"
+        CheckFile(path)
+        pd.DataFrame(res).to_csv(f"{path}\{self.para.TStep}結果(test{fileName}).csv",index=False, header = True)
         plt.figure()
         plt.plot(x,YT,label='Observation value')
         plt.plot(x,YP,label='Forcasting value')
@@ -261,7 +276,8 @@ class L(Train):
         plt.xlabel("WaterLevel")
         plt.legend()
         # plt.savefig('TestCase.png')
-        return plt.savefig(f'{self.para.TPlus}TestCase {self.para.ModelName}.png')
+        
+        return plt.savefig(f'{path}\{self.para.TStep}TestCase(test{fileName}).png')
     
     def Index(self,obs,pred):
         " 訓練 & 測試 modelName T+N"
@@ -275,5 +291,26 @@ class L(Train):
     def _PredictionCase(self):
         self.forcasting = self.model.predict(self.X_test)
         return self.forcasting
+
+    def MSF(self,time,temp):
+        "多步階預報"
+        
+        trainOrtest = self.test_set_scaled
+        New_x, New_y = self._Split(time=time,trainOrtest=trainOrtest)
+
+        f = self.forcasting
+        for i in range(len(New_x)):
+            New_x[i][-1][-1] = f[i]
+            if time>2 :
+                New_x[i][-2][-1] = temp[-1][i]
+        
+        self.forcasting = self.model.predict(New_x)
+        self.Y_test = New_y #畫圖用
+        self._ForcastCurve('MSF'+str(time)) #出圖&檔
+        return self.forcasting
+
+
+
+
 # LSTM.DataProcessing()
 # LSTM.ModelSetting(False)

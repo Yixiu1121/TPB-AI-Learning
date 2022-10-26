@@ -4,7 +4,7 @@ from Control.CaseSplit import *
 import numpy as np
 
 
-Tr = ImportCSV("Train",None)
+Tr = ImportCSV("Train",None) #SM FT TPB SMInflow SMOutflow FTOutflow Tide WL
 Ts =  ImportCSV("Test",None)
 # AD = ImportCSV("AD",None)
 # F = CaseDict(AD)
@@ -27,35 +27,44 @@ loss = ['mse','msle']
 # Tr = np.arange(2,41)
 # Ts = np.arange(42,49)
 # Global para
-for i in [1,3,6]:
-    NPara = Para()
-    NPara.ModelName = 'SVM' # lstm
-    NPara.TStep = 3  
-    NPara.TPlus = i  ##預測 T+1 T+3 T+6 
-    NPara.FeatureN = 7
-    NPara.ParamGrid = dict(optimizer=opt, nb_epoch=epochs,batch_size=btcsz)
-    NPara.Scoring = "neg_mean_absolute_error"
+for j in [1]:
+    for i in [1]:
+        NPara = Para()
+        NPara.ModelName = 'LSTM' # lstm
+        NPara.TStep = j  
+        NPara.TPlus = i  ##預測 T+1 T+3 T+6 
+        NPara.FeatureN = 8
+        NPara.ParamGrid = dict(optimizer=opt, nb_epoch=epochs,batch_size=btcsz)
+        NPara.Scoring = "neg_mean_absolute_error"
 
-    GP = GPara()
-    GP.activate = 'relu'
-    GP.btcsz = 32 #16 或 32
-    GP.opt =  'rmsprop' #'rmsprop'
-    GP.epochs = 100
-    GP.loss = "msle"
+        GP = GPara()
+        GP.activate = 'relu'
+        GP.btcsz = 32 #16 或 32
+        GP.opt =  'rmsprop' #'rmsprop'
+        GP.epochs = 200
+        GP.loss = "msle"
 
-    TPB_Data = DataSet()
-    TPB_Data.TrainingData = Tr
-    TPB_Data.TestData =  Ts
-    NewL = L()
-    NewL.Define(NPara,TPB_Data,GP)
-    NewL.DataProcessing()
-    NewL.ModelSetting(False)
-    NewL.PlotResult()
+        TPB_Data = DataSet()
+        TPB_Data.TrainingData = Tr
+        TPB_Data.TestData =  Ts
+
+        NewL = L()
+        NewL.Define(NPara,TPB_Data,GP)
+        NewL.DataProcessing()
+        NewL.ModelSetting(False)
+        NewL.PlotResult()
+        Temp = [] #t+1
+        for n in range(2,6+1):
+            Temp.append(NewL._Prediction())
+            NewL.MSF(time = n, temp = Temp)
+
+
+
 
 
 # 1.把訓練測試集從字典合成
 # 2.跑模式
-# # 3.預測單場
+# 3.預測單場
 # a = np.array(F[1])
 # for i in [Tr]:
 #     np.concatenate(np.array([F[i]], ignore_index=True))

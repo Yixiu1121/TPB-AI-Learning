@@ -32,3 +32,4 @@ class Case():
     Casenum:int
     StrTime:str
     EndTime:str
+

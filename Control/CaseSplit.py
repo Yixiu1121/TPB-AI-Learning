@@ -20,7 +20,8 @@ def DateCompare(compareDate,strTime,endTime):
     eT = datetime.datetime.strptime(endTime,'%Y/%m/%d %H:%M')
     if cD >= sT and cD <= eT:
         return True
-
+    if cD > eT: 
+        return 'bigger'
 def CaseDict(AD):
     "場次字典"
     F = {}

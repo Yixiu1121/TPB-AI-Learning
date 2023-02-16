@@ -1,11 +1,6 @@
 
 from abc import ABC, abstractmethod
-from gc import callbacks
-from msilib.schema import Feature
-import re
-from sqlite3 import Timestamp
-from tabnanny import verbose
-from tokenize import PlainToken
+from multiprocessing.dummy import Process
 import numpy as np
 from Control.ImportData import *
 from tensorflow.keras import Sequential,losses,optimizers
@@ -75,7 +70,7 @@ class Train(ABC):
     def _ForcastCurve(self):
         "預測歷線"
 
-
+Process = dataFunction()
 class L(Train):
     def Define(self,Para,Dset,GPara):
         'Para,Dset'
@@ -96,8 +91,10 @@ class L(Train):
 
     def _Normalization(self):
         "正規化訓練和測試"
-        self.training_set_scaled = dataFunction.Normalize(data=self.trainingSet)
-        self.test_set_scaled = dataFunction.Normalize(data=self.testSet)
+        from sklearn.preprocessing import MinMaxScaler
+        self.sc = MinMaxScaler(feature_range = (0, 1))
+        self.training_set_scaled = self.sc.fit_transform(self.trainingSet)
+        self.test_set_scaled = self.sc.transform(self.testSet)
         return self.training_set_scaled
 
     def _FeatureScaling(self):
@@ -106,8 +103,8 @@ class L(Train):
         time = self.para.TStep
         TPlus = self.para.TPlus
         TStep = self.para.TStep
-        self.X_train,self.Y_train = dataFunction.Split(time,self.training_set_scaled,TPlus,TStep)
-        self.X_test,self.Y_test = dataFunction.Split(time,self.test_set_scaled,TPlus,TStep)
+        self.X_train,self.Y_train = Process.Split(time,self.training_set_scaled,TPlus,TStep)
+        self.X_test,self.Y_test = Process.Split(time,self.test_set_scaled,TPlus,TStep)
         return 
     
     def ModelSetting(self,useGridSearch:bool):
@@ -147,17 +144,17 @@ class L(Train):
         self.model = model
         return self.model
 
-    def _FittingModel(self):
+    def FittingModel(model,name,X_train, Y_train):
         "注意:驗證集切分依順序"
-        if self.para.ModelName == 'SVM':
-            self.X_train = (self.X_train).reshape(len(self.X_train),-1)
-            self.model.fit(self.X_train, self.Y_train)
+        if name == 'SVM':
+            X_train = (X_train).reshape(len(X_train),-1)
+            model.fit(X_train, Y_train)
         else:
-            self.model.compile(optimizer=self.gpara.opt, loss=self.gpara.loss, metrics=['mae'])
-            self.model.summary()
+            # model.compile(optimizer=self.gpara.opt, loss=self.gpara.loss, metrics=['mae'])
+            # model.summary()
             stopping = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=40, min_delta=0.0001, restore_best_weights=True) ## monitor = acc 
-            self.history = self.model.fit(self.X_train, self.Y_train, epochs = self.gpara.epochs, batch_size = self.gpara.btcsz,validation_split=0.2,callbacks = [stopping])
-        return  self.model
+            history = model.fit(X_train, Y_train, epochs = 200, batch_size = 16 ,validation_split=0.2,callbacks = [stopping])
+        return  history, model
 
     def _Prediction(self):
         if self.para.ModelName == 'SVM':
@@ -174,11 +171,11 @@ class L(Train):
         #     print("%f (%f) with: %r" % (scores.mean(), scores.std(), params))
         return grit
 
-    def PlotResult(self):
+    def PlotResult(self,fileName):
         # if self.para.ModelName!='SVM':
         #     self._LossFun() 
-        self._ForcastCurve()
-        return super().PlotResult()
+        self._ForcastCurve(fileName)
+        return "fileName"
     
     def _LossFun(self):
         print(self.history.history.keys()) #['loss', 'mae', 'val_loss', 'val_mae']
@@ -188,12 +185,18 @@ class L(Train):
         plt.legend()
         plt.savefig(f'{self.para.TPlus}LossCurve {self.para.ModelName}.png')
         return plt.close()
-        
+
+    def _InverseCol(self,y):
+        y = y.copy()
+        y -= self.sc.min_[-1]
+        y /= self.sc.scale_[-1]
+        return y
+
     def _ForcastCurve(self, fileName=""):
         x = np.arange(len(self.Y_test))
         # 反正規
-        YT = (dataFunction.InverseCol(self.Y_test)).flatten()
-        YP = (dataFunction.InverseCol(self.forcasting)).flatten()
+        YT = (self._InverseCol(self.Y_test)).flatten()
+        YP = (self._InverseCol(self.forcasting)).flatten()
         d = {   'Observation':YT,'Forcast':YP}
         g = {   'activate':self.gpara.activate, 
                 'opt':self.gpara.opt,
@@ -203,10 +206,11 @@ class L(Train):
                 'Tstep':self.para.TStep
                 }
         # 合併觀測值&預測值+指標 字典
-        res = {**d, **dataFunction.Index(YT,YP), **g} 
+        
+        res = {**d, **Process.Index(YT,YP), **g} 
         path = f"{self.para.ModelName}\{self.para.TPlus}"
         CheckFile(path)
-        pd.DataFrame(res).to_csv(f"{path}\{self.para.TStep}結果(test{fileName}).csv",index=False, header = True)
+        pd.DataFrame(res).to_csv(f"{path}\{self.para.TStep}結果({fileName}).csv",index=False, header = True)
         plt.figure()
         plt.plot(x,YT,label='Observation value')
         plt.plot(x,YP,label='Forcasting value')
@@ -215,29 +219,93 @@ class L(Train):
         plt.xlabel("WaterLevel")
         plt.legend()
         # plt.savefig('TestCase.png')
-        return plt.savefig(f'{path}\{self.para.TStep}TestCase(test{fileName}).png')
+        return plt.savefig(f'{path}\{self.para.TStep}TestCase({fileName}).png')
     
 #### 繪製單場
     def _PredictionCase(self):
         self.forcasting = self.model.predict(self.X_test)
         return self.forcasting
 
-    def MSF(self,time,temp):
-        "多步階預報"
-        New_x, New_y = dataFunction.Split(time,self.test_set_scaled,self.para.TPlus,self.para.TStep)
+    # def msf(self,time,temp):
+    #     "多步階預報"
+    #     New_x, New_y = Process.Split(time,self.test_set_scaled,self.para.TPlus,self.para.TStep)
+    #     f = self.forcasting
+    #     # other_factor_forcast = [] #其他預測值
+    #     for i in range(len(New_x)):
+    #         New_x[i][-1][-1] = f[i]
+    #         # New_x[i][-1][-2] = other_factor_forcast[i]
+    #         if time>2 :
+    #             New_x[i][-2][-1] = temp[-1][i]
+    #             # New_x[i][-1][-2] = other_factor_forcast[i]
+    #     print(time,f[0],temp[-1][0])
+    #     print(New_x[0])
+
+    #     self.X_test = New_x
+    #     self.forcasting = self._Prediction()
+    #     self.Y_test = New_y #畫圖用
+    #     self._ForcastCurve('1029'+str(time)) #出圖&檔
+    #     return self.forcasting
+
+    # def MSF(self,t=6):
+    #     "預設 t=6"
+    #     Temp = [] #t+1
+    #     for n in range(2,t+1):
+    #         Temp.append(self._Prediction())
+    #         self.msf(time = n, temp = Temp)
+
+    def msf(self,time,temp):
+        "多步階預報 t+2開始"
+        new_x = np.delete(self.X_test,0, 1)     # 1:維度(由外到內) 移除3維第一行
+        new_y = np.delete(self.Y_test, 0)   
         f = self.forcasting
-        for i in range(len(New_x)):
-            New_x[i][-1][-1] = f[i]
-            if time>2 :
-                New_x[i][-2][-1] = temp[-1][i]
-        self.X_test = New_x
+        
+        #觀測值 時間跟test一樣 #要正規化
+        Shihimen = [] 
+        Feitsui = []
+        TPBRain = []
+        SMOutflow = []
+        FTOutflow = []
+        Tide = []
+        for i in range(len(f)):
+            j = i+self.para.TStep + time -1 
+            other_forcast = []  # 其他因子預報值
+            other_forcast.append(Shihimen[j],Feitsui[j],TPBRain[j],SMOutflow[j],FTOutflow[j],Tide[j])
+            other_forcast.append(f[i])  # 加入水位預測值
+            new_x[i].append(other_forcast) #3維
+
+        self.X_test = new_x
         self.forcasting = self._Prediction()
-        self.Y_test = New_y #畫圖用
-        self._ForcastCurve('MSF'+str(time)) #出圖&檔
+        self.Y_test = new_y #畫圖用
+        self._ForcastCurve('1029'+str(time)) #出圖&檔
         return self.forcasting
 
+    def MSF(self,t=6):
+        "預設 t=6"
+        Temp = [] #t+1
+        for n in range(2,t+1):
+            Temp.append(self._Prediction())
+            self.msf(time = n, temp = Temp)
 
 
 
 # LSTM.DataProcessing()
 # LSTM.ModelSetting(False)
+
+# 1. 放入預報值
+# [[o1,o2,o3...]    t-2
+#  [o1,o2,o3...]    t-1
+#  [o1,o2,o3...]]   t
+
+# [[o1,o2,o3...]    t-1
+#  [o1,o2,o3...]    t
+#  [f1,f2,f3...]]   t+1
+
+# [[o1,o2,o3...]    t
+#  [f1,f2,f3...]    t+1
+#  [f1,f2,f3...]]   t+2
+
+# [[f1,f2,f3...]    t+1
+#  [f1,f2,f3...]    t+2
+#  [f1,f2,f3...]]   t+3
+
+# bug => MSF 

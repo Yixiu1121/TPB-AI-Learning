@@ -51,8 +51,11 @@ class Processed_Data():
         time = self.para.TStep
         TPlus = self.para.TPlus
         Step = self.para.TStep
+        FeatureN = self.para.FeatureN
         self.X_train,self.Y_train = dataFunction.Split(time,self.training_set_scaled,TPlus,Step)
         self.X_test,self.Y_test = dataFunction.Split(time,self.test_set_scaled,TPlus,Step)
+        self.X_train = np.reshape(self.X_train, (self.X_train.shape[0],1, (time+1)*FeatureN))   # 3*7 轉成 1*21
+        self.X_test = np.reshape(self.X_test, (self.X_test.shape[0],1, (time+1)*FeatureN))
         return self.X_train,self.Y_train,self.X_test,self.Y_test
     
     def _InverseCol(self,y):

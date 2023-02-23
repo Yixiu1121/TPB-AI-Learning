@@ -1,5 +1,5 @@
 from tensorflow.keras import Sequential, losses, optimizers
-from tensorflow.keras.layers import LSTM,Dropout,Dense,Flatten,RNN,SimpleRNN,RepeatVector,TimeDistributed,Input
+from tensorflow.keras.layers import LSTM,Dropout,Dense,Flatten,RNN,SimpleRNN,RepeatVector,TimeDistributed,Input,Conv1D,MaxPooling1D
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.models import Model
 from sklearn import svm
@@ -13,13 +13,14 @@ import matplotlib.pyplot as plt
 def deepLearning(name, para, gpara, LayerNum):
     if name == "LSTM":
         model = Sequential()
-        model.add(LSTM(LayerNum[0], input_shape=(para.TStep+1, para.FeatureN), return_sequences=True))
+        model.add(LSTM(LayerNum[0], input_shape=(1,((para.TStep+1)*para.FeatureN)), return_sequences=True))
         for i in LayerNum[1:-1]:
             model.add(LSTM(i, return_sequences=True))
         # model.add(Dropout(0.3))
         model.add(LSTM(LayerNum[-1]))
         # model.add(Dropout(0.15))
         model.add(Dense(1, activation = gpara.activate))
+        
 
     elif name == "RNN":
         model = Sequential()
@@ -46,6 +47,15 @@ def deepLearning(name, para, gpara, LayerNum):
 
         # Define the model
         model = Model([inputs, decoder_inputs], outputs)
+    elif name == "CNN-LSTM":
+        cnn = Sequential()
+        cnn.add(Conv1D(filters=64, kernel_size=1, activation="relu", input_shape=( para.TStep+1, para.FeatureN)))
+        cnn.add(MaxPooling1D(pool_size=2))
+        cnn.add(Flatten())
+        model = Sequential()
+        model.add(TimeDistributed(cnn))
+        model.add(LSTM(16))
+        model.add(Dense(1, activation = gpara.activate))
 
     model.compile(optimizer=gpara.opt, loss=gpara.loss, metrics=['mae'])
     model.summary()

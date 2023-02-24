@@ -112,7 +112,7 @@ def ForcastCurve( Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
         res = {**d, **dataFunction.Index(YT,YP), **g} 
         path = f"{Npara.ModelName}\{Npara.TStep}\{subtitle}"
         CheckFile(path)
-        pd.DataFrame(res).to_csv(f"{path}\({fileName}).csv",index=False, header = True)
+        pd.DataFrame(res).to_csv(f"{path}\{fileName}index.csv",index=False, header = True)
         plt.rcParams["figure.figsize"] = (8, 6)
         plt.figure()
         plt.plot(x,YT,label='Observation value')

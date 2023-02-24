@@ -21,11 +21,13 @@ Ts = Ts[~Ts['#16'].str.contains('#')]
 # F = CaseDict(AD)
 Tr.columns = init_input
 Ts.columns = init_input
+
 # 差值
 # Tr['WaterLevel'] = Tr['WaterLevel']*100-Tr['Tide']  #差值
 # Ts['WaterLevel'] = Ts['WaterLevel']*100-Ts['Tide']  #差值
 Tr = Tr[input]
 Ts = Ts[input]
+
 # 預報值
 Fors = Ts[input]
 # RandomList = []
@@ -41,7 +43,7 @@ Fors = Ts[input]
 
 
 # 檔名
-subtitle = "0225_"
+subtitle = "0225t"
 # 網格搜尋法參數調整
 activate = ['relu','tanh']
 opt = ['rmsprop', 'adam']
@@ -110,7 +112,7 @@ DF2CSV(df, "Debug")
 
 # 訓練模型 
         #,[8,8,8],[8,8,8,8]
-for num in range(1):
+for num in range(1,50):
     for TimeStep in [3]:
         NPara = Para()
         NPara.TStep = TimeStep
@@ -118,13 +120,15 @@ for num in range(1):
         NPara.FeatureN = len(input) #7
         Npr = pr()
         X_train, Y_train, X_test, Y_test = Npr.DataProcessing(Dset=TPB_Data, Para=NPara)
-        print (pr._Normalization) 
+        # print (pr._Normalization) 
         ## 輸入項預報值正規化
         Fors = Npr._ForcastNormal(Fors)
-        for layer in [[64,64,64,64],[128,128,8],[16,16,16,16],[8,8,8]]:  
+        for layer in [[64,64,64,64],[128,128,8],[16,16,16,16],[8,8,8]]:   #,[128,128,8],[16,16,16,16],[8,8,8]
             for name in ["LSTM"]: #,"RNN","SVM","Seq2Seq"
                 NPara.ModelName = name
                 NPara.FeatureN = len(input) #7
+                path = f"{name}\{TimeStep}\{subtitle}"
+                savePath = f"{len(layer)}{layer[0]}({num})"
                 # for para in []:
                 if name == "SVM":
                     newModel=machineLearning(name)
@@ -142,13 +146,13 @@ for num in range(1):
                     # plotHistory(history)
                     ##存檔
                     CheckFile(f"saved_model\{name}")
-                    fitModel.save(f'saved_model\{name}\{TimeStep}\{subtitle}\{len(layer)}{layer[0]}({num}).h5')
+                    fitModel.save(f'saved_model\{path}\{savePath}.h5')
                 forcasting = Prediction(fitModel,name, X_test)
                 
                 ##反正規　畫圖
                 Y_Inv = Npr._InverseCol(Y_test)
                 F_Inv = Npr._InverseCol(forcasting) 
-                PlotResult = ForcastCurve(NPara, F_Inv[:200], Y_Inv[:200], GP ,subtitle, fileName=f"{len(layer)}{layer[0]}({num})")
+                PlotResult = ForcastCurve(NPara, F_Inv[:200], Y_Inv[:200], GP ,subtitle, fileName=savePath)
                 ##多步階
                 
                 # d={"RMSE":[]}
@@ -167,7 +171,7 @@ for num in range(1):
                 ##鬍鬚圖
                 Single = []
                 time = 0
-                for x in range(len(X_test)):
+                for x in range(len(X_test[20:50])):
                     temp = []
                     time+=1
                     Xtest = np.reshape(X_test[x], (1, 4, 7))
@@ -177,7 +181,8 @@ for num in range(1):
                     F_Inv = Npr._InverseCol(forcasting) 
                     temp.append(np.reshape(F_Inv,(1)))
                     # print(time)
-                    for i in range(time+1,len(X_test)-2): 
+                    for i in range(time+1,20): 
+                    # for i in range(time+1,len(X_test)-2):
                         new_x, new_y = msf(Fors, Xtest , Ytest , forcasting, time=i, TStep = NPara.TStep)
                         Xtest = new_x
                         Ytest = new_y
@@ -193,8 +198,7 @@ for num in range(1):
                         N+=1 
                     Single.append(temp)
                 df = pd.DataFrame( Single )
-                path = f"{name}\{TimeStep}\{subtitle}"
-                DF2CSV(df, f"{path}\{len(layer)}{layer[0]}({num})")
+                DF2CSV(df, f"{path}\{savePath}")
 # """
 
 """

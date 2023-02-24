@@ -122,7 +122,7 @@ def ForcastCurve( Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
         plt.xlabel("WaterLevel")
         plt.legend()
         # plt.savefig('TestCase.png')
-        return plt.savefig(f'{path}\{Npara.TStep}TestCase({fileName}).png')
+        return plt.savefig(f'{path}\{Npara.TStep}TestCase{fileName}.png')
 def MSFForcastCurve(d, i, Y_Inv, F_Inv ):
     ""
     x = np.arange(len(Y_Inv))

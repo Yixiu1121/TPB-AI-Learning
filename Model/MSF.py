@@ -4,7 +4,10 @@ def msf(Fors, X_test,Y_test,forcasting,time,TStep):
         "多步階預報 t+2開始"
         from keras import backend as K
         new_x = np.delete(X_test, 0, 1)     # 1:維度(由外到內) 移除3維第一行
-        new_y = np.delete(Y_test, 0)       # 刪掉第一個
+        if Y_test != "":
+            new_y = np.delete(Y_test, 0)       # 刪掉第一個
+        else: 
+             new_y = ""
         ## 新增最後一行
         f = forcasting
         

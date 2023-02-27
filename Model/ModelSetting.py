@@ -90,39 +90,39 @@ def Prediction(model,name,X_test):
     return forcasting
 
 def ForcastCurve( Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
-        x = np.arange(len(Y_Inv))
-        # 反正規
-        YT = (Y_Inv).flatten()
-        YP = (F_Inv).flatten()
-        d = {  'Observation':YT, 'Forcast':YP }
-        if GP == "":
-            g = {
+    x = np.arange(len(Y_Inv))
+    # 反正規
+    YT = (Y_Inv).flatten()
+    YP = (F_Inv).flatten()
+    d = {  'Observation':YT, 'Forcast':YP }
+    if GP == "":
+        g = {
+            'Tstep':Npara.TStep
+        }
+    else:
+        g = {   'activate':GP.activate, 
+                'opt':GP.opt,
+                'epochs':GP.epochs,
+                'batchSize':GP.btcsz,
+                'loss':GP.loss,
                 'Tstep':Npara.TStep
-            }
-        else:
-            g = {   'activate':GP.activate, 
-                    'opt':GP.opt,
-                    'epochs':GP.epochs,
-                    'batchSize':GP.btcsz,
-                    'loss':GP.loss,
-                    'Tstep':Npara.TStep
-                    }
-        # 合併觀測值&預測值+指標 字典
-        
-        res = {**d, **dataFunction.Index(YT,YP), **g} 
-        path = f"{Npara.ModelName}\{Npara.TStep}\{subtitle}"
-        CheckFile(path)
-        pd.DataFrame(res).to_csv(f"{path}\{fileName}index.csv",index=False, header = True)
-        plt.rcParams["figure.figsize"] = (8, 6)
-        plt.figure()
-        plt.plot(x,YT,label='Observation value')
-        plt.plot(x,YP,label='Forcasting value')
-        plt.title(f"{Npara.TPlus}AllTestEvent")
-        plt.xlabel("Time")
-        plt.xlabel("WaterLevel")
-        plt.legend()
-        # plt.savefig('TestCase.png')
-        return plt.savefig(f'{path}\{Npara.TStep}TestCase{fileName}.png')
+                }
+    # 合併觀測值&預測值+指標 字典
+    
+    res = {**d, **dataFunction.Index(YT,YP), **g} 
+    path = f"{Npara.ModelName}\{Npara.TStep}\{subtitle}"
+    CheckFile(path)
+    pd.DataFrame(res).to_csv(f"{path}\{fileName}index.csv",index=False, header = True)
+    plt.rcParams["figure.figsize"] = (8, 6)
+    plt.figure()
+    plt.plot(x,YT,label='Observation value')
+    plt.plot(x,YP,label='Forcasting value')
+    plt.title(f"{Npara.TPlus}AllTestEvent")
+    plt.xlabel("Time")
+    plt.xlabel("WaterLevel")
+    plt.legend()
+    # plt.savefig('TestCase.png')
+    return plt.savefig(f'{path}\{Npara.TStep}TestCase{fileName}.png')
 def MSFForcastCurve(d, i, Y_Inv, F_Inv ):
     ""
     x = np.arange(len(Y_Inv))
@@ -144,6 +144,7 @@ def dictCSV(d, Npara, subtitle, fileName):
     return path
 
 def plotSeries(YT, YP, fileName):
+    "t+1圖"
     x = np.arange(len(YT))
     plt.rcParams["figure.figsize"] = (8, 6)
     plt.figure()
@@ -157,10 +158,26 @@ def plotSeries(YT, YP, fileName):
     return plt.savefig(f'{path}\{fileName}.png')
 
 def plotHistory(history):
-        plt.plot(history.history['loss'])
-        plt.plot(history.history['val_loss'])
-        plt.title('Model loss')
-        plt.ylabel('Loss')
-        plt.xlabel('Epoch')
-        plt.legend(['Train', 'Test'], loc='upper left')
-        plt.show()
+    "loss curve"
+    plt.plot(history.history['loss'])
+    plt.plot(history.history['val_loss'])
+    plt.title('Model loss')
+    plt.ylabel('Loss')
+    plt.xlabel('Epoch')
+    plt.legend(['Train', 'Test'], loc='upper left')
+    plt.show()
+def plotMegiMSF(dff, importPath):
+    "Megi鬍鬚圖"
+    x = np.arange(19)
+    plt.rcParams["figure.figsize"] = (11, 8)
+    plt.figure()
+    plt.plot(x,dff[0],label='Observation value')
+    plt.plot(x,dff[1][:],label='Forcasting value')
+    for p in range(2,19):
+        plt.plot(x[p-1:],dff[p][p-1:],label=f'Forcasting value{p}')
+    plt.title(f"MegiEvent")
+    plt.xlabel("Time")
+    plt.xlabel("WaterLevel")
+    plt.legend()
+    return(plt.savefig(f"{importPath}Dujan鬍鬚圖.png"))
+

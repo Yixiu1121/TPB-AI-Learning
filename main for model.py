@@ -40,7 +40,7 @@ Fors = Ts[input]
 # Fors["Tide"] = Fors["Tide"]*RandomList2
 
 # 檔名
-subtitle = "0227"
+subtitle = "0303t"
 # 網格搜尋法參數調整
 activate = ['relu','tanh']
 opt = ['rmsprop', 'adam']
@@ -48,75 +48,20 @@ epochs = [2]
 # hl1_nodes = np.array([1, 10, 50])
 btcsz = [1,16,32]
 loss = ['mse','msle']
-
+timeList = [3,3,3,9,8,7,3]
+shape = sum(timeList)
 # MSF 
 TPB_Data = DataSet()
 TPB_Data.TrainingData = Tr
 TPB_Data.TestData =  Ts
-"""
-# 載入模型
-df = ImportCSV(f"./LSTM/3/0225tt/(IndexAll)",None)
-df = df.sort_values(by=['CC'], ascending=False)
-# for model in df["model"][80:100]:
-for model in ["3128(38)"]:
-    importPath = f"LSTM/3/0225tt/{model}"
-    load_model = tf.keras.models.load_model(f'saved_model/{importPath}.h5')
-    NPara = Para()
-    NPara.TStep = 3
-    NPara.TPlus = 1
-    NPara.ModelName = "LSTM"
-    NPara.FeatureN = len(input) #7
-    Npr = pr()
-    X_train, Y_train, X_test, Y_test = Npr.DataProcessing(Dset=TPB_Data, Para=NPara)
-    Fors = Npr._ForcastNormal(Fors)
-
-    forcasting = Prediction(load_model, NPara.ModelName, X_test) 
-    Y_Inv = Npr._InverseCol(Y_test)
-    F_Inv = Npr._InverseCol(forcasting) 
-    # PlotResult = ForcastCurve(NPara, F_Inv, Y_Inv, "",subtitle, fileName="load")
-    
-    #鬍鬚圖
-
-    Single = [Y_Inv]
-    time = 0
-    for x in range(0,30):
-        temp = []
-        time+=1
-        Xtest = np.reshape(X_test[x], (1, 4, 7))
-        # Ytest = Y_test[x]
-        # forcasting = Prediction(new_model, NPara.ModelName, np.reshape(new_x, (1, 4, 7)))
-        forcasting = Prediction(load_model, NPara.ModelName, np.reshape(Xtest, (1, 1, 28)) )
-        F_Inv = Npr._InverseCol(forcasting) 
-        temp.append(np.reshape(F_Inv,(1))[0])
-        # print(time)
-        for i in range(time+1,20): 
-        # for i in range(time+1,len(X_test)-2):
-            new_x, new_y = msf(Fors, Xtest , "" , forcasting, time=i, TStep = NPara.TStep)
-            Xtest = new_x
-            # Ytest = new_y
-            # print(new_x[0], new_y[0])
-            # forcasting = Prediction(new_model, NPara.ModelName, np.reshape(new_x, (1, 4, 7)))
-            forcasting = Prediction(load_model, NPara.ModelName, np.reshape(new_x, (1, 1, 28)))
-            # print("X=",new_x[0],"Y=",new_y[0],forcasting[0])
-            F_Inv = Npr._InverseCol(forcasting) 
-            temp.append(np.reshape(F_Inv,(1))[0])
-        N = 0
-        while N<x :    
-            temp.insert(0,"")
-            N+=1 
-        Single.append(temp)
-    df = pd.DataFrame( Single )
-    DF2CSV(df.T, f"{importPath}load")
-    dff = df.T[:20][:19]
-    plotMegiMSF(dff, importPath)
-"""
 
 
 # 訓練模型 
-for num in range(50):
-    for TimeStep in [3]:
+for num in range(2):
+    for TimeStep in [5]:
         NPara = Para()
         NPara.TStep = TimeStep
+        NPara.TStepList = timeList
         NPara.TPlus = 1
         NPara.FeatureN = len(input) #7
         Npr = pr()
@@ -124,7 +69,9 @@ for num in range(50):
         # print (pr._Normalization) 
         ## 輸入項預報值正規化
         Fors = Npr._ForcastNormal(Fors)
-        for layer in [[8,16,32]]:   #[64,64,64,64],[128,128,8],[16,16,16,16],[8,8,8],[64,128,256,128,64]
+        #[64,64,64,64],[128,128,8],[16,16,16,16],[8,8,8],[64,128,256,128,64],[8,16,32],[32,32,32,20],[8,16]
+        #[256,128,64],[32,32,32]
+        for layer in [[128,128,8],[64,128,256,128,64],[256,128,64],[32,32,32]]:   
             for name in ["LSTM"]: #,"RNN","SVM","Seq2Seq"
                 NPara.ModelName = name
                 NPara.FeatureN = len(input) #7
@@ -140,7 +87,7 @@ for num in range(50):
                     GP.activate = 'relu'
                     GP.btcsz = 16 #16 或 32
                     GP.opt =  'rmsprop' #'rmsprop'
-                    GP.epochs = 150
+                    GP.epochs = 300
                     GP.loss = "msle"
                     newModel = deepLearning(name, NPara, GP, layer)
                     history, fitModel = FittingModel(newModel,name,X_train, Y_train, GP)
@@ -156,27 +103,29 @@ for num in range(50):
                 PlotResult = ForcastCurve(NPara, F_Inv[:200], Y_Inv[:200], GP ,subtitle, fileName=savePath)
 
                 #鬍鬚圖
-                Single = [Y_Inv]
+                Single = [Y_Inv[20:50]]
                 time = 0
-                event = X_test[30:60]
+                ForsOne = Fors[20:50]
+                ForsOne = ForsOne[7:]
+                event = X_test[20:50]
                 for x in range(len(event)):
                     temp = []
                     time+=1
-                    Xtest = np.reshape(event[x], (1, 4, 7))
+                    Xtest = np.reshape(event[x], (1, 1, event[x].shape[1]))
                     # Ytest = Y_test[x]
                     # forcasting = Prediction(new_model, NPara.ModelName, np.reshape(new_x, (1, 4, 7)))
-                    forcasting = Prediction(fitModel, NPara.ModelName, np.reshape(Xtest, (1, 1, 28)) )
+                    forcasting = Prediction(fitModel, NPara.ModelName, Xtest) 
                     F_Inv = Npr._InverseCol(forcasting) 
                     temp.append(np.reshape(F_Inv,(1))[0])
                     # print(time)
                     for i in range(time+1,20): 
                     # for i in range(time+1,len(X_test)-2):
-                        new_x, new_y = msf(Fors, Xtest , "" , forcasting, time=i, TStep = NPara.TStep)
+                        new_x, new_y = msf1D(Fors = ForsOne[x], X_test = Xtest , Y_test = "" , forcasting=forcasting, TStep = NPara.TStepList)
                         Xtest = new_x
                         # Ytest = new_y
                         # print(new_x[0], new_y[0])
                         # forcasting = Prediction(new_model, NPara.ModelName, np.reshape(new_x, (1, 4, 7)))
-                        forcasting = Prediction(fitModel, NPara.ModelName, np.reshape(new_x, (1, 1, 28)))
+                        forcasting = Prediction(fitModel, NPara.ModelName, new_x)
                         # print("X=",new_x[0],"Y=",new_y[0],forcasting[0])
                         F_Inv = Npr._InverseCol(forcasting) 
                         temp.append(np.reshape(F_Inv,(1))[0])

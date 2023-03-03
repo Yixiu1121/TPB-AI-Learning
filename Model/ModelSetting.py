@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 def deepLearning(name, para, gpara, LayerNum):
     if name == "LSTM":
         model = Sequential()
-        model.add(LSTM(LayerNum[0], input_shape=(1,((para.TStep+1)*para.FeatureN)), return_sequences=True))
+        model.add(LSTM(LayerNum[0], input_shape=(1,43), return_sequences=True))
         for i in LayerNum[1:-1]:
             model.add(LSTM(i, return_sequences=True))
         # model.add(Dropout(0.3))
@@ -77,8 +77,8 @@ def FittingModel(model,name,X_train, Y_train, gpara):
     else:
         # model.compile(optimizer=self.gpara.opt, loss=self.gpara.loss, metrics=['mae'])
         # model.summary()
-        stopping = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=40, min_delta=0.0001, restore_best_weights=True) ## monitor = acc 
-        history = model.fit(X_train, Y_train, epochs = gpara.epochs, batch_size = gpara.btcsz ,validation_split=0.2,callbacks = [stopping])
+        # stopping = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=40, min_delta=0.0001, restore_best_weights=True) ## monitor = acc 
+        history = model.fit(X_train, Y_train, epochs = gpara.epochs, batch_size = gpara.btcsz ,validation_split=0.2) #,callbacks = [stopping]
     return  history,model
 
 def Prediction(model,name,X_test):

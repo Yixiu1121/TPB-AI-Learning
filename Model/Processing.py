@@ -12,6 +12,20 @@ class dataFunction():
             x.append(trainOrtest[t-TStep:t+1,:]) # T-Tstep ~ T
             y.append(trainOrtest[t+TPlus,-1]) # T+N
         x, y = np.array(x), np.array(y)  # 轉成numpy array的格式，以利輸入 RNN
+        return x, y       
+    def SplitMuti(trainOrtest,timeList,TPlus = 1):
+        "切分多個不同時間步長資料"
+        maxtime = max(timeList) #最大步長時間
+        x = []   #預測點的前 N 天的資料
+        y = []   #預測點
+        for t in range(maxtime, len(trainOrtest)-TPlus):  # 1258 是訓練集總數
+            temp = np.hstack((trainOrtest[t-timeList[0]:t+1,0],trainOrtest[t-timeList[1]:t+1,1],
+                            trainOrtest[t-timeList[2]:t+1,2],trainOrtest[t-timeList[3]:t+1,3],
+                            trainOrtest[t-timeList[4]:t+1,4],trainOrtest[t-timeList[5]:t+1,5],
+                            trainOrtest[t-timeList[6]:t+1,6])) # T-Tstep ~ T
+            x.append(temp)
+            y.append(trainOrtest[t+TPlus,-1]) # T+N
+        x, y = np.array(x), np.array(y)  # 轉成numpy array的格式，以利輸入 RNN
         return x, y        
     def Reshape(FeatureN,x_2D):
         "二維轉成三維"
@@ -37,6 +51,14 @@ class Processed_Data():
         self._Normalization()   
         return self._FeatureScaling()
 
+    def OldProcessing(self, Dset, Para):
+        "步驟"
+        self.para = Para
+        self.trainingSet = (Dset.TrainingData)
+        self.testSet = (Dset.TestData)
+        self._Normalization()   
+        return self._oFeatureScaling()
+    
     def _Normalization(self):
         "正規化訓練和測試"
         from sklearn.preprocessing import MinMaxScaler
@@ -48,16 +70,29 @@ class Processed_Data():
     def _FeatureScaling(self):
         "分成時間序列 X=t-n~t  Y=t+1  timeStep"
         "Tplus 預測 T+n 時刻"
+        timeList = self.para.TStepList
+        TPlus = self.para.TPlus
+        Step = self.para.TStep
+        FeatureN = self.para.FeatureN
+        self.X_train,self.Y_train = dataFunction.SplitMuti(self.training_set_scaled,timeList)
+        self.X_test,self.Y_test = dataFunction.SplitMuti(self.test_set_scaled,timeList)
+        self.X_train = np.reshape(self.X_train, (self.X_train.shape[0],1, self.X_train.shape[1]))   # 3*7 轉成 1*21
+        self.X_test = np.reshape(self.X_test, (self.X_test.shape[0],1, self.X_test.shape[1]))
+        return self.X_train,self.Y_train,self.X_test,self.Y_test
+    
+    def _oFeatureScaling(self):
+        "分成時間序列 X=t-n~t  Y=t+1  timeStep"
+        "Tplus 預測 T+n 時刻"
         time = self.para.TStep
         TPlus = self.para.TPlus
         Step = self.para.TStep
         FeatureN = self.para.FeatureN
         self.X_train,self.Y_train = dataFunction.Split(time,self.training_set_scaled,TPlus,Step)
         self.X_test,self.Y_test = dataFunction.Split(time,self.test_set_scaled,TPlus,Step)
-        self.X_train = np.reshape(self.X_train, (self.X_train.shape[0],1, (time+1)*FeatureN))   # 3*7 轉成 1*21
-        self.X_test = np.reshape(self.X_test, (self.X_test.shape[0],1, (time+1)*FeatureN))
+        self.X_train = np.reshape(self.X_train, (self.X_train.shape[0],1, self.X_train.shape[1]*FeatureN))   # 3*7 轉成 1*21
+        self.X_test = np.reshape(self.X_test, (self.X_test.shape[0],1, self.X_test.shape[1]*FeatureN))
         return self.X_train,self.Y_train,self.X_test,self.Y_test
-    
+
     def _InverseCol(self,y):
         y = y.copy()
         y -= self.sc.min_[-1]

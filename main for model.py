@@ -40,7 +40,7 @@ Fors = Ts[input]
 # Fors["Tide"] = Fors["Tide"]*RandomList2
 
 # 檔名
-subtitle = "0305"
+subtitle = "0306"
 # 網格搜尋法參數調整
 activate = ['relu','tanh']
 opt = ['rmsprop', 'adam']
@@ -48,7 +48,7 @@ epochs = [2]
 # hl1_nodes = np.array([1, 10, 50])
 btcsz = [1,16,32]
 loss = ['mse','msle']
-timeList = [6,6,6,6,6,12,6]
+timeList = [6,6,6,12,12,12,12]
 shape = sum(timeList)+len(timeList)
 # MSF 
 TPB_Data = DataSet()
@@ -58,7 +58,7 @@ TPB_Data.TestData =  Ts
 
 # 訓練模型 
 for num in range(2):
-    for TimeStep in [3]:
+    for TimeStep in [12]:
         NPara = Para()
         NPara.TStep = TimeStep
         NPara.shape = shape
@@ -92,7 +92,7 @@ for num in range(2):
                     GP.loss = "msle"
                     newModel = deepLearning(name, NPara, GP, layer)
                     history, fitModel = FittingModel(newModel,name,X_train, Y_train, GP)
-                    # plotHistory(history)
+                    plotHistory(history)
                     ##存檔
                     CheckFile(f"saved_model\{name}")
                     fitModel.save(f'saved_model\{path}\{savePath}.h5')
@@ -101,7 +101,7 @@ for num in range(2):
                 ##反正規　畫圖
                 Y_Inv = Npr._InverseCol(Y_test)
                 F_Inv = Npr._InverseCol(forcasting) 
-                PlotResult = ForcastCurve(NPara, F_Inv[:200], Y_Inv[:200], GP ,subtitle, fileName=savePath)
+                PlotResult = ForcastCurve(200, NPara, F_Inv, Y_Inv, GP ,subtitle, fileName=savePath)
 
                 #鬍鬚圖
                 Single = [Y_Inv[20:50]]

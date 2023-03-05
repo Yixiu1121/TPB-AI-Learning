@@ -89,7 +89,7 @@ def Prediction(model,name,X_test):
     forcasting = model.predict(X_test)
     return forcasting
 
-def ForcastCurve( Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
+def ForcastCurve( plotRange, Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
     x = np.arange(len(Y_Inv))
     # 反正規
     YT = (Y_Inv).flatten()
@@ -105,7 +105,7 @@ def ForcastCurve( Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
                 'epochs':GP.epochs,
                 'batchSize':GP.btcsz,
                 'loss':GP.loss,
-                'Tstep':Npara.TStep
+                'Tsteplist':Npara.TStepList
                 }
     # 合併觀測值&預測值+指標 字典
     
@@ -115,8 +115,8 @@ def ForcastCurve( Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
     pd.DataFrame(res).to_csv(f"{path}\{fileName}index.csv",index=False, header = True)
     plt.rcParams["figure.figsize"] = (8, 6)
     plt.figure()
-    plt.plot(x,YT,label='Observation value')
-    plt.plot(x,YP,label='Forcasting value')
+    plt.plot(x,YT[:plotRange],label='Observation value')
+    plt.plot(x,YP[:plotRange],label='Forcasting value')
     plt.title(f"{Npara.TPlus}AllTestEvent")
     plt.xlabel("Time")
     plt.xlabel("WaterLevel")

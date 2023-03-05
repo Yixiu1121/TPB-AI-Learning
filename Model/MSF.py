@@ -1,17 +1,35 @@
 import numpy as np
 
-def msf1D(Fors, X_test,Y_test,forcasting,timeList,TStep):
+def deltuple(timeList):
+    del_tuple = ()
+    for num in range(0,len(timeList)):
+        del_tuple += tuple([sum(timeList[1:num+1])+num])
+    return del_tuple
+def insertTuple(timeList):
+    insert_tuple = ()
+    for num in range(0,len(timeList)):
+        insert_tuple += tuple([sum(timeList[:num+1])])
+    return insert_tuple
+
+def forsTuple(fors,forcasting):
+    fors_tuple = ()
+    for i in range(len(fors)-1):
+        fors_tuple += tuple([fors[i]])
+    fors_tuple += tuple([forcasting])
+    return fors_tuple
+
+def msf1D(Fors, X_test,Y_test,forcasting,timeList):
         "多步階預報 t+2開始"
         from keras import backend as K
-        
-        timeList = [3,3,3,3,3,6,3] #(0,4,8,12,16,23,27)
-        new_x = np.delete(X_test, (0,4,8,18,27,35,39))    #3,3,3,6,6,12,12 # 1:維度(由外到內) 移除3維第一行
+        # timeList = [3,3,3,3,3,6,3] #(0,4,8,12,16,23,27)
+        #3,3,3,6,6,12,12 # 1:維度(由外到內) 移除3維第一行
+        new_x = np.delete(X_test, deltuple(timeList))    
         if Y_test != "":
             new_y = np.delete(Y_test, 0)       # 刪掉第一個
         else: 
              new_y = ""
         ## 新增最後一行
-        New_x = np.insert(new_x,(3,6,9,18,26,33,36),(Fors[0],Fors[1],Fors[2],Fors[3],Fors[4],Fors[5],forcasting))
+        New_x = np.insert(new_x,  insertTuple(timeList), (forsTuple(Fors,forcasting)))
         New_x = K.cast_to_floatx(New_x)
         New_x = np.reshape(New_x,(1,1,len(New_x)))
         return New_x, new_y

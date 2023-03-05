@@ -40,7 +40,7 @@ Fors = Ts[input]
 # Fors["Tide"] = Fors["Tide"]*RandomList2
 
 # 檔名
-subtitle = "0303t"
+subtitle = "0305"
 # 網格搜尋法參數調整
 activate = ['relu','tanh']
 opt = ['rmsprop', 'adam']
@@ -48,8 +48,8 @@ epochs = [2]
 # hl1_nodes = np.array([1, 10, 50])
 btcsz = [1,16,32]
 loss = ['mse','msle']
-timeList = [3,3,3,9,8,7,3]
-shape = sum(timeList)
+timeList = [6,6,6,6,6,12,6]
+shape = sum(timeList)+len(timeList)
 # MSF 
 TPB_Data = DataSet()
 TPB_Data.TrainingData = Tr
@@ -58,9 +58,10 @@ TPB_Data.TestData =  Ts
 
 # 訓練模型 
 for num in range(2):
-    for TimeStep in [5]:
+    for TimeStep in [3]:
         NPara = Para()
         NPara.TStep = TimeStep
+        NPara.shape = shape
         NPara.TStepList = timeList
         NPara.TPlus = 1
         NPara.FeatureN = len(input) #7
@@ -120,7 +121,7 @@ for num in range(2):
                     # print(time)
                     for i in range(time+1,20): 
                     # for i in range(time+1,len(X_test)-2):
-                        new_x, new_y = msf1D(Fors = ForsOne[x], X_test = Xtest , Y_test = "" , forcasting=forcasting, TStep = NPara.TStepList)
+                        new_x, new_y = msf1D(timeList = NPara.TStepList, Fors = ForsOne[x], X_test = Xtest , Y_test = "" , forcasting=forcasting)
                         Xtest = new_x
                         # Ytest = new_y
                         # print(new_x[0], new_y[0])

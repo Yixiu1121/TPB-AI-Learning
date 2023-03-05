@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt
 def deepLearning(name, para, gpara, LayerNum):
     if name == "LSTM":
         model = Sequential()
-        model.add(LSTM(LayerNum[0], input_shape=(1,43), return_sequences=True))
+        model.add(LSTM(LayerNum[0], input_shape=(1,para.shape), return_sequences=True))
         for i in LayerNum[1:-1]:
             model.add(LSTM(i, return_sequences=True))
         # model.add(Dropout(0.3))

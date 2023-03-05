@@ -5,7 +5,7 @@ from sklearn.metrics import r2_score
 
 class dataFunction():
     def Split(time,trainOrtest,TPlus,TStep):
-        "切分不同時間步長資料"
+        """切分不同時間步長資料"""
         x = []   #預測點的前 N 天的資料
         y = []   #預測點
         for t in range(time, len(trainOrtest)-TPlus):  # 1258 是訓練集總數
@@ -14,26 +14,26 @@ class dataFunction():
         x, y = np.array(x), np.array(y)  # 轉成numpy array的格式，以利輸入 RNN
         return x, y       
     def SplitMuti(trainOrtest,timeList,TPlus = 1):
-        "切分多個不同時間步長資料"
+        """切分多個不同時間步長資料"""
         maxtime = max(timeList) #最大步長時間
         x = []   #預測點的前 N 天的資料
         y = []   #預測點
         for t in range(maxtime, len(trainOrtest)-TPlus):  # 1258 是訓練集總數
-            temp = np.hstack((trainOrtest[t-timeList[0]:t+1,0],trainOrtest[t-timeList[1]:t+1,1],
-                            trainOrtest[t-timeList[2]:t+1,2],trainOrtest[t-timeList[3]:t+1,3],
-                            trainOrtest[t-timeList[4]:t+1,4],trainOrtest[t-timeList[5]:t+1,5],
-                            trainOrtest[t-timeList[6]:t+1,6])) # T-Tstep ~ T
+            arg_tuple = ()
+            for i in range(len(timeList)):
+                arg_tuple += tuple(trainOrtest[t-timeList[i]:t+1,i])
+            temp = np.hstack(arg_tuple) # T-Tstep ~ T....
             x.append(temp)
             y.append(trainOrtest[t+TPlus,-1]) # T+N
         x, y = np.array(x), np.array(y)  # 轉成numpy array的格式，以利輸入 RNN
         return x, y        
     def Reshape(FeatureN,x_2D):
-        "二維轉成三維"
+        """二維轉成三維"""
         x_3D = np.reshape(x_2D, (x_2D.shape[0], x_2D.shape[1], FeatureN))
         return x_3D
     
     def Index(obs,pred):
-        " 訓練 & 測試 modelName T+N"
+        """ 訓練 & 測試 modelName T+N"""
         RMSE = np.sqrt(mean_squared_error(obs, pred))    #RMSE 極端值影響明顯
         MAE = mean_absolute_error(obs, pred)          #MAE        
         MSLE = mean_squared_error(obs, pred)           #MSLE 懲罰被低估的估計大於被高估的估計。
@@ -44,7 +44,7 @@ class dataFunction():
 
 class Processed_Data():
     def DataProcessing(self, Dset, Para):
-        "步驟"
+        """步驟"""
         self.para = Para
         self.trainingSet = (Dset.TrainingData)
         self.testSet = (Dset.TestData)
@@ -52,7 +52,7 @@ class Processed_Data():
         return self._FeatureScaling()
 
     def OldProcessing(self, Dset, Para):
-        "步驟"
+        """步驟"""
         self.para = Para
         self.trainingSet = (Dset.TrainingData)
         self.testSet = (Dset.TestData)
@@ -60,7 +60,7 @@ class Processed_Data():
         return self._oFeatureScaling()
     
     def _Normalization(self):
-        "正規化訓練和測試"
+        """正規化訓練和測試"""
         from sklearn.preprocessing import MinMaxScaler
         self.sc = MinMaxScaler(feature_range = (0, 1))
         self.training_set_scaled = self.sc.fit_transform(self.trainingSet)
@@ -68,8 +68,8 @@ class Processed_Data():
         return self.sc
 
     def _FeatureScaling(self):
-        "分成時間序列 X=t-n~t  Y=t+1  timeStep"
-        "Tplus 預測 T+n 時刻"
+        """分成時間序列 X=t-n~t  Y=t+1  timeStep"""
+        """Tplus 預測 T+n 時刻"""
         timeList = self.para.TStepList
         TPlus = self.para.TPlus
         Step = self.para.TStep
@@ -81,8 +81,8 @@ class Processed_Data():
         return self.X_train,self.Y_train,self.X_test,self.Y_test
     
     def _oFeatureScaling(self):
-        "分成時間序列 X=t-n~t  Y=t+1  timeStep"
-        "Tplus 預測 T+n 時刻"
+        """分成時間序列 X=t-n~t  Y=t+1  timeStep"""
+        """Tplus 預測 T+n 時刻"""
         time = self.para.TStep
         TPlus = self.para.TPlus
         Step = self.para.TStep

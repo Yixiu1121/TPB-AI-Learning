@@ -3,7 +3,7 @@ import numpy as np
 def deltuple(timeList):
     del_tuple = ()
     for num in range(0,len(timeList)):
-        del_tuple += tuple([sum(timeList[1:num+1])+num])
+        del_tuple += tuple([sum(timeList[:num])+num])
     return del_tuple
 def insertTuple(timeList):
     insert_tuple = ()
@@ -24,6 +24,7 @@ def msf1D(Fors, X_test,Y_test,forcasting,timeList):
         # timeList = [3,3,3,3,3,6,3] #(0,4,8,12,16,23,27)
         #3,3,3,6,6,12,12 # 1:維度(由外到內) 移除3維第一行
         new_x = np.delete(X_test, deltuple(timeList))    
+        
         if Y_test != "":
             new_y = np.delete(Y_test, 0)       # 刪掉第一個
         else: 

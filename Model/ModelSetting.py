@@ -90,7 +90,9 @@ def Prediction(model,name,X_test):
     return forcasting
 
 def ForcastCurve( plotRange, Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
-    x = np.arange(len(Y_Inv))
+    
+
+    x = np.arange(len(Y_Inv[:plotRange]))
     # 反正規
     YT = (Y_Inv).flatten()
     YP = (F_Inv).flatten()
@@ -105,7 +107,8 @@ def ForcastCurve( plotRange, Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
                 'epochs':GP.epochs,
                 'batchSize':GP.btcsz,
                 'loss':GP.loss,
-                'Tsteplist':Npara.TStepList
+                'Tsteplist':f"{Npara.TStepList}",
+                'Layer':f"{Npara.Layer}"
                 }
     # 合併觀測值&預測值+指標 字典
     
@@ -113,6 +116,7 @@ def ForcastCurve( plotRange, Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
     path = f"{Npara.ModelName}\{Npara.TStep}\{subtitle}"
     CheckFile(path)
     pd.DataFrame(res).to_csv(f"{path}\{fileName}index.csv",index=False, header = True)
+
     plt.rcParams["figure.figsize"] = (8, 6)
     plt.figure()
     plt.plot(x,YT[:plotRange],label='Observation value')
@@ -157,7 +161,7 @@ def plotSeries(YT, YP, fileName):
     # plt.savefig('TestCase.png')
     return plt.savefig(f'{path}\{fileName}.png')
 
-def plotHistory(history):
+def plotHistory(history,fileName):
     "loss curve"
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
@@ -165,7 +169,8 @@ def plotHistory(history):
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Test'], loc='upper left')
-    plt.show()
+    return plt.savefig(f'{path}\{fileName}loss.png')
+
 def plotMegiMSF(dff, importPath):
     "Megi鬍鬚圖"
     x = np.arange(19)

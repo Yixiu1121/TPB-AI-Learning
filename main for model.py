@@ -10,7 +10,7 @@ import random
 
 # 因子調整
 init_input = ['Shihimen','Feitsui','TPB','SMInflow','SMOutflow','FTOutflow','Tide','WaterLevel']  #8個
-input = ['Shihimen','Feitsui','TPB','SMOutflow','FTOutflow','Tide','WaterLevel']   #7個
+input = ['TPB','SMOutflow','FTOutflow','Tide','WaterLevel']   #7個
 Tr = ImportCSV("Train",None) #SM FT TPB SMInflow SMOutflow FTOutflow Tide WL
 Ts =  ImportCSV("Test",None)
 # Megi = ImportCSV("Megi",None)
@@ -40,7 +40,7 @@ Fors = Ts[input]
 # Fors["Tide"] = Fors["Tide"]*RandomList2
 
 # 檔名
-subtitle = "0306"
+subtitle = "debug"
 # 網格搜尋法參數調整
 activate = ['relu','tanh']
 opt = ['rmsprop', 'adam']
@@ -48,8 +48,8 @@ epochs = [2]
 # hl1_nodes = np.array([1, 10, 50])
 btcsz = [1,16,32]
 loss = ['mse','msle']
-timeList = [6,6,6,12,12,12,12]
-shape = sum(timeList)+len(timeList)
+# timeList = [6,6,6,12,12,12,12]
+# shape = sum(timeList)+len(timeList)
 # MSF 
 TPB_Data = DataSet()
 TPB_Data.TrainingData = Tr
@@ -57,11 +57,12 @@ TPB_Data.TestData =  Ts
 
 
 # 訓練模型 
-for num in range(2):
+TimeList=[[2,6,6,8,3]]
+for num, timeList in enumerate(TimeList, start=4):
     for TimeStep in [12]:
         NPara = Para()
         NPara.TStep = TimeStep
-        NPara.shape = shape
+        NPara.shape = sum(timeList)+len(timeList)
         NPara.TStepList = timeList
         NPara.TPlus = 1
         NPara.FeatureN = len(input) #7
@@ -72,8 +73,9 @@ for num in range(2):
         Fors = Npr._ForcastNormal(Fors)
         #[64,64,64,64],[128,128,8],[16,16,16,16],[8,8,8],[64,128,256,128,64],[8,16,32],[32,32,32,20],[8,16]
         #[256,128,64],[32,32,32]
-        for layer in [[128,128,8],[64,128,256,128,64],[256,128,64],[32,32,32]]:   
+        for layer in [[64,64,64,64],[128,128,8],[16,16,16,16],[8,16,32]]:   
             for name in ["LSTM"]: #,"RNN","SVM","Seq2Seq"
+                NPara.Layer = layer
                 NPara.ModelName = name
                 NPara.FeatureN = len(input) #7
                 path = f"{name}\{TimeStep}\{subtitle}"
@@ -86,13 +88,13 @@ for num in range(2):
                 else:
                     GP = GPara()
                     GP.activate = 'relu'
-                    GP.btcsz = 16 #16 或 32
+                    GP.btcsz = 32 #16 或 32
                     GP.opt =  'rmsprop' #'rmsprop'
-                    GP.epochs = 300
+                    GP.epochs = 150
                     GP.loss = "msle"
                     newModel = deepLearning(name, NPara, GP, layer)
                     history, fitModel = FittingModel(newModel,name,X_train, Y_train, GP)
-                    plotHistory(history)
+                    # plotHistory(history,savePath)
                     ##存檔
                     CheckFile(f"saved_model\{name}")
                     fitModel.save(f'saved_model\{path}\{savePath}.h5')
@@ -101,13 +103,13 @@ for num in range(2):
                 ##反正規　畫圖
                 Y_Inv = Npr._InverseCol(Y_test)
                 F_Inv = Npr._InverseCol(forcasting) 
-                PlotResult = ForcastCurve(200, NPara, F_Inv, Y_Inv, GP ,subtitle, fileName=savePath)
+                PlotResult = ForcastCurve( 200, NPara, F_Inv, Y_Inv, GP ,subtitle, fileName=savePath)
 
                 #鬍鬚圖
                 Single = [Y_Inv[20:50]]
                 time = 0
                 ForsOne = Fors[20:50]
-                ForsOne = ForsOne[7:]
+                ForsOne = ForsOne[max(timeList)+1:]
                 event = X_test[20:50]
                 for x in range(len(event)):
                     temp = []

@@ -1,5 +1,5 @@
 from tensorflow.keras import Sequential, losses, optimizers
-from tensorflow.keras.layers import LSTM,Dropout,Dense,Flatten,RNN,SimpleRNN,RepeatVector,TimeDistributed,Input,Conv1D,MaxPooling1D
+from tensorflow.keras.layers import LSTM,Dropout,Dense,Flatten,RNN,SimpleRNN,RepeatVector,TimeDistributed,Input,Conv1D,MaxPooling1D,Bidirectional
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.models import Model
 from sklearn import svm
@@ -10,17 +10,27 @@ import matplotlib.pyplot as plt
 
 
 # LayerNum = [16,16,8]
+
 def deepLearning(name, para, gpara, LayerNum):
     if name == "LSTM":
         model = Sequential()
-        model.add(LSTM(LayerNum[0], input_shape=(1,para.shape), return_sequences=True))
+        model.add(LSTM(LayerNum[0],input_shape=(1,para.shape), return_sequences=True))
         for i in LayerNum[1:-1]:
             model.add(LSTM(i, return_sequences=True))
-        # model.add(Dropout(0.3))
         model.add(LSTM(LayerNum[-1]))
-        # model.add(Dropout(0.15))
+        # model.add(Dropout(0.1))
         model.add(Dense(1, activation = gpara.activate))
-        
+        opt = optimizers.RMSprop(lr=gpara.lr) ##調整learning rate
+
+    elif name == "BiLSTM":
+        model = Sequential()
+        model.add(Bidirectional(LSTM(LayerNum[0], return_sequences=True, stateful=False), merge_mode="concat",input_shape=(1,para.shape)))
+        for i in LayerNum[1:-1]:
+            model.add(Bidirectional(LSTM(i, return_sequences=True)))
+        model.add(Bidirectional(LSTM(LayerNum[-1])))
+        # model.add(Dropout(0.1))
+        model.add(Dense(1, activation = gpara.activate))
+        opt = optimizers.RMSprop(lr=gpara.lr) ##調整learning rate    
 
     elif name == "RNN":
         model = Sequential()
@@ -57,7 +67,7 @@ def deepLearning(name, para, gpara, LayerNum):
         model.add(LSTM(16))
         model.add(Dense(1, activation = gpara.activate))
 
-    model.compile(optimizer=gpara.opt, loss=gpara.loss, metrics=['mae'])
+    model.compile(optimizer=opt, loss=gpara.loss, metrics=['mae'])
     model.summary()
     return model
 def machineLearning(name):
@@ -108,14 +118,15 @@ def ForcastCurve( plotRange, Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
                 'batchSize':GP.btcsz,
                 'loss':GP.loss,
                 'Tsteplist':f"{Npara.TStepList}",
-                'Layer':f"{Npara.Layer}"
+                'Layer':f"{Npara.Layer}",
+                'Learning rate':GP.lr
                 }
     # 合併觀測值&預測值+指標 字典
     
     res = {**d, **dataFunction.Index(YT,YP), **g} 
-    path = f"{Npara.ModelName}\{Npara.TStep}\{subtitle}"
-    CheckFile(path)
-    pd.DataFrame(res).to_csv(f"{path}\{fileName}index.csv",index=False, header = True)
+    # path = f"{Npara.ModelName}\{Npara.TStep}\{subtitle}"
+    # CheckFile(path)
+    pd.DataFrame(res).to_csv(f"{fileName}index.csv",index=False, header = True)
 
     plt.rcParams["figure.figsize"] = (8, 6)
     plt.figure()
@@ -126,7 +137,7 @@ def ForcastCurve( plotRange, Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
     plt.xlabel("WaterLevel")
     plt.legend()
     # plt.savefig('TestCase.png')
-    return plt.savefig(f'{path}\{Npara.TStep}TestCase{fileName}.png')
+    return plt.savefig(f'{fileName}TestCase.png')
 def MSFForcastCurve(d, i, Y_Inv, F_Inv ):
     ""
     x = np.arange(len(Y_Inv))
@@ -163,13 +174,14 @@ def plotSeries(YT, YP, fileName):
 
 def plotHistory(history,fileName):
     "loss curve"
+    plt.figure()
     plt.plot(history.history['loss'])
     plt.plot(history.history['val_loss'])
     plt.title('Model loss')
     plt.ylabel('Loss')
     plt.xlabel('Epoch')
     plt.legend(['Train', 'Test'], loc='upper left')
-    return plt.savefig(f'{path}\{fileName}loss.png')
+    return plt.savefig(f'{fileName}loss.png')
 
 def plotMegiMSF(dff, importPath):
     "Megi鬍鬚圖"

@@ -40,7 +40,7 @@ Fors = Ts[input]
 # Fors["Tide"] = Fors["Tide"]*RandomList2
 
 # 檔名
-subtitle = "debug"
+subtitle = "0314BiLSTM"
 # 網格搜尋法參數調整
 activate = ['relu','tanh']
 opt = ['rmsprop', 'adam']
@@ -55,15 +55,16 @@ TPB_Data = DataSet()
 TPB_Data.TrainingData = Tr
 TPB_Data.TestData =  Ts
 
-
+endTimeList=[-1,-2,-1,-1,0] #取到t-1
 # 訓練模型 
-TimeList=[[2,6,6,8,3]]
-for num, timeList in enumerate(TimeList, start=4):
+timeList=[1,5,3,6,6]    #1,3,3,12,12 [1,6,3,12,6] ,[1,4,3,12,6],[1,3,3,12,5]
+for num, opt in enumerate(["mae", "msle"], start=2):
     for TimeStep in [12]:
         NPara = Para()
         NPara.TStep = TimeStep
-        NPara.shape = sum(timeList)+len(timeList)
+        NPara.shape = sum(timeList)+sum(endTimeList)+len(timeList)
         NPara.TStepList = timeList
+        NPara.EDTStepList = endTimeList
         NPara.TPlus = 1
         NPara.FeatureN = len(input) #7
         Npr = pr()
@@ -73,14 +74,14 @@ for num, timeList in enumerate(TimeList, start=4):
         Fors = Npr._ForcastNormal(Fors)
         #[64,64,64,64],[128,128,8],[16,16,16,16],[8,8,8],[64,128,256,128,64],[8,16,32],[32,32,32,20],[8,16]
         #[256,128,64],[32,32,32]
-        for layer in [[64,64,64,64],[128,128,8],[16,16,16,16],[8,16,32]]:   
-            for name in ["LSTM"]: #,"RNN","SVM","Seq2Seq"
+        for layer in [[16,16,8],[64, 128, 64]]:   #[64,128,64],[128,256,128],[128,256]
+            for name in ["BiLSTM"]: #,"RNN","SVM","Seq2Seq"
                 NPara.Layer = layer
                 NPara.ModelName = name
                 NPara.FeatureN = len(input) #7
                 path = f"{name}\{TimeStep}\{subtitle}"
                 savePath = f"{len(layer)}{layer[0]}({num})"
-                # for para in []:
+                # for para in []
                 if name == "SVM":
                     newModel=machineLearning(name)
                     GP = ""
@@ -88,28 +89,35 @@ for num, timeList in enumerate(TimeList, start=4):
                 else:
                     GP = GPara()
                     GP.activate = 'relu'
-                    GP.btcsz = 32 #16 或 32
-                    GP.opt =  'rmsprop' #'rmsprop'
+                    GP.btcsz = 16 #16 或 32
+                    GP.opt =  opt #'rmsprop' 'adam'
                     GP.epochs = 150
-                    GP.loss = "msle"
+                    GP.loss = "mae" #mae msle
+                    GP.lr = 0.00001
                     newModel = deepLearning(name, NPara, GP, layer)
                     history, fitModel = FittingModel(newModel,name,X_train, Y_train, GP)
-                    # plotHistory(history,savePath)
+                    CheckFile(f"{path}")
+                    plotHistory(history,f"{path}\{savePath}")
                     ##存檔
                     CheckFile(f"saved_model\{name}")
                     fitModel.save(f'saved_model\{path}\{savePath}.h5')
                 forcasting = Prediction(fitModel,name, X_test)
-                
+                forcastingTr = Prediction(fitModel,name, X_train)
                 ##反正規　畫圖
                 Y_Inv = Npr._InverseCol(Y_test)
                 F_Inv = Npr._InverseCol(forcasting) 
-                PlotResult = ForcastCurve( 200, NPara, F_Inv, Y_Inv, GP ,subtitle, fileName=savePath)
-
+                PlotResult = ForcastCurve( 200, NPara, F_Inv, Y_Inv, GP ,subtitle, fileName=f"{path}\{savePath}")
+                
+                Yr_Inv = Npr._InverseCol(Y_train)
+                Fr_Inv = Npr._InverseCol(forcastingTr) 
+                PlotResult = ForcastCurve( 200, NPara, Fr_Inv, Yr_Inv, GP ,subtitle, fileName=f"{path}\{savePath}(train)")
+                
                 #鬍鬚圖
                 Single = [Y_Inv[20:50]]
                 time = 0
-                ForsOne = Fors[20:50]
-                ForsOne = ForsOne[max(timeList)+1:]
+                ForsOne = Fors[20:]
+                # ForsOne = ForsOne[max(timeList)+1:] ## t+1時刻
+                ForsOne = ForsOne[max(timeList):] ## t時刻
                 event = X_test[20:50]
                 for x in range(len(event)):
                     temp = []
@@ -123,7 +131,7 @@ for num, timeList in enumerate(TimeList, start=4):
                     # print(time)
                     for i in range(time+1,20): 
                     # for i in range(time+1,len(X_test)-2):
-                        new_x, new_y = msf1D(timeList = NPara.TStepList, Fors = ForsOne[x], X_test = Xtest , Y_test = "" , forcasting=forcasting)
+                        new_x, new_y = msf1D(endTimeList = endTimeList, timeList = NPara.TStepList, Fors = ForsOne[x], X_test = Xtest , Y_test = "" , forcasting=forcasting)
                         Xtest = new_x
                         # Ytest = new_y
                         # print(new_x[0], new_y[0])
@@ -172,3 +180,4 @@ for num, timeList in enumerate(TimeList, start=4):
                 #     PlotResult = ForcastCurve(NPara, F_Inv, Y_Inv, GP ,subtitle, fileName=f"MSF{str(i)+str(layer[0])+str(len(layer))+subtitle}")
                 #     MSFForcastCurve(d, i, Y_Inv, F_Inv )
                 # dictCSV(d, NPara, subtitle, fileName=f"MSF{str(i)+str(layer[0])+str(len(layer))+subtitle}" )
+

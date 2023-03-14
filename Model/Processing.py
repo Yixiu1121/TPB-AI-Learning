@@ -13,7 +13,7 @@ class dataFunction():
             y.append(trainOrtest[t+TPlus,-1]) # T+N
         x, y = np.array(x), np.array(y)  # 轉成numpy array的格式，以利輸入 RNN
         return x, y       
-    def SplitMuti(trainOrtest,timeList,TPlus = 1):
+    def SplitMuti(trainOrtest,timeList,endTimeList,TPlus = 1):
         """切分多個不同時間步長資料"""
         maxtime = max(timeList) #最大步長時間
         x = []   #預測點的前 N 天的資料
@@ -21,7 +21,8 @@ class dataFunction():
         for t in range(maxtime, len(trainOrtest)-TPlus):  # 1258 是訓練集總數
             arg_tuple = ()
             for i in range(len(timeList)):
-                arg_tuple += tuple(trainOrtest[t-timeList[i]:t+1,i])
+                arg_tuple += tuple(trainOrtest[t-timeList[i]:t+1+endTimeList[i],i]) #取到
+                 # 只取到t-1
             temp = np.hstack(arg_tuple) # T-Tstep ~ T....
             x.append(temp)
             y.append(trainOrtest[t+TPlus,-1]) # T+N
@@ -71,11 +72,12 @@ class Processed_Data():
         """分成時間序列 X=t-n~t  Y=t+1  timeStep"""
         """Tplus 預測 T+n 時刻"""
         timeList = self.para.TStepList
+        endTimeList = self.para.EDTStepList
         TPlus = self.para.TPlus
         Step = self.para.TStep
         FeatureN = self.para.FeatureN
-        self.X_train,self.Y_train = dataFunction.SplitMuti(self.training_set_scaled,timeList)
-        self.X_test,self.Y_test = dataFunction.SplitMuti(self.test_set_scaled,timeList)
+        self.X_train,self.Y_train = dataFunction.SplitMuti(self.training_set_scaled,timeList,endTimeList)
+        self.X_test,self.Y_test = dataFunction.SplitMuti(self.test_set_scaled,timeList,endTimeList)
         self.X_train = np.reshape(self.X_train, (self.X_train.shape[0],1, self.X_train.shape[1]))   # 3*7 轉成 1*21
         self.X_test = np.reshape(self.X_test, (self.X_test.shape[0],1, self.X_test.shape[1]))
         return self.X_train,self.Y_train,self.X_test,self.Y_test

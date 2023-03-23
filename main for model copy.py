@@ -57,13 +57,13 @@ TPB_Data.TestData =  Ts
 
 # 訓練模型 
 num = 0
-for TimeStep in [5]:
+for TimeStep in [3]:
     NPara = Para()
     NPara.TStep = TimeStep
     NPara.TPlus = 1
     NPara.FeatureN = len(input) #7
     Npr = pr()
-    X_train, Y_train, X_test, Y_test = Npr.DataProcessing(Dset=TPB_Data, Para=NPara)
+    X_train, Y_train, X_test, Y_test = Npr.SameProcessing(Dset=TPB_Data, Para=NPara)
     # print (pr._Normalization) 
     ## 輸入項預報值正規化
     Fors = Npr._ForcastNormal(Fors)
@@ -80,22 +80,22 @@ for TimeStep in [5]:
             GP = ""
             history, fitModel = FittingModel(newModel,name, X_train, Y_train, GP)
         forcasting = Prediction(fitModel,name, X_test)
-        
+        CheckFile(f"{path}")
         ##反正規　畫圖
         Y_Inv = Npr._InverseCol(Y_test)
         F_Inv = Npr._InverseCol(forcasting) 
-        PlotResult = ForcastCurve(NPara, F_Inv[:200], Y_Inv[:200], GP ,subtitle, fileName=savePath)
+        PlotResult = ForcastCurve(200, NPara, F_Inv[:200], Y_Inv[:200], GP ,subtitle, "", fileName = f"{path}\{savePath}")
 
         #鬍鬚圖
         Single = [Y_Inv[30:60]]
         time = 0
         ForsOne = Fors[30:60]
-        ForsOne = ForsOne[7:]
+        ForsOne = ForsOne[TimeStep+1:]
         event = X_test[30:60]
         for x in range(len(event)):
             temp = []
             time+=1
-            Xtest = np.reshape(event[x], (1, 1, event[x].shape[1]))
+            Xtest = np.reshape(event[x], (1, event[x].shape[0], event[x].shape[1]))
             # Ytest = Y_test[x]
             # forcasting = Prediction(new_model, NPara.ModelName, np.reshape(new_x, (1, 4, 7)))
             forcasting = Prediction(fitModel, NPara.ModelName, Xtest) 
@@ -104,7 +104,7 @@ for TimeStep in [5]:
             # print(time)
             for i in range(time+1,20): 
             # for i in range(time+1,len(X_test)-2):
-                new_x, new_y = msf1D(Fors = ForsOne[x], X_test = Xtest , Y_test = "" , forcasting=forcasting, time=i, TStep = NPara.TStep)
+                new_x, new_y = msf(Fors = ForsOne[x], X_test = Xtest , Y_test = "" , forcasting=forcasting)
                 Xtest = new_x
                 # Ytest = new_y
                 # print(new_x[0], new_y[0])

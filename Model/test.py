@@ -26,39 +26,23 @@ Ts = Ts[~Ts['#16'].str.contains('#')]
 Tr.columns = init_input
 Ts.columns = init_input
 
+
 # 差值
 # Tr['WaterLevel'] = Tr['WaterLevel']*100-Tr['Tide']  #差值
 # Ts['WaterLevel'] = Ts['WaterLevel']*100-Ts['Tide']  #差值
 Tr = Tr[input]
 Ts = Ts[input]
-batch_size = 32
-in_steps = 1
-in_vector = 26 #因子數
-out_vector = 12
-NPara = Para()
-timeList = [1,3,3,12,6]
-NPara.TStep = timeList
-NPara.shape = sum(timeList)+1
-NPara.TStepList = timeList
-NPara.TPlus = 1
-NPara.FeatureN = len(input) #7
-model = Sequential()
-model.add(LSTM(128,batch_input_shape=(batch_size, in_steps ,in_vector), stateful=True))
-model.add(RepeatVector(20))
-model.add(TimeDistributed(Dense(out_vector, activation='relu')))
-print(model.summary())
-model.compile(loss='mse', optimizer='adam')
-TPB_Data = DataSet()
-TPB_Data.TrainingData = Tr
-TPB_Data.TestData =  Ts
-Npr = pr()
-X_train, Y_train, X_test, Y_test = Npr.DataProcessing(Dset=TPB_Data, Para=NPara)
-newy = []
-for i in range(len(Y_train)-11):
-    newy.append(Y_train[i:i+12])
-new_Y_test = []
-for i in range(len(Y_test)-11):
-    newy.append(Y_test[i:i+12])
-history = model.fit(X_train, newy, epochs = 200, batch_size = batch_size ,validation_split=0.2)
-result = model.predict(X_test, batch_size = 32, verbose=0)
+
+from pandas import Series
+from pandas import DataFrame
+# load dataset
+# series = Series.from_csv('seasonally_adjusted.csv', header=None)
+# reframe as supervised learning
+for i in range(12,0,-1):
+    dataframe['t-'+str(i)] = Tr.shift(i)
+    dataframe['t'] = Tr.values
+    print(dataframe.head(13))
+    dataframe = dataframe[13:]
+# save to new file
+dataframe.to_csv('lags_12months_features.csv', index=False)
 

@@ -1,5 +1,5 @@
 from tensorflow.keras import Sequential, losses, optimizers
-from tensorflow.keras.layers import LSTM,Dropout,Dense,Flatten,RNN,SimpleRNN,RepeatVector,TimeDistributed,Input,Conv1D,MaxPooling1D,Bidirectional
+from tensorflow.keras.layers import LSTM,Dropout,Dense,Flatten,RNN,SimpleRNN,RepeatVector,TimeDistributed,Input,Conv1D,MaxPooling1D,Bidirectional, Permute, Multiply
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.models import Model
 from sklearn import svm
@@ -7,6 +7,7 @@ import numpy as np
 from Model.Processing import dataFunction
 from Control.ImportData import *
 import matplotlib.pyplot as plt
+from matplotlib.ticker import MultipleLocator
 
 
 # LayerNum = [16,16,8]
@@ -14,65 +15,79 @@ import matplotlib.pyplot as plt
 def deepLearning(name, para, gpara, LayerNum):
     if name == "LSTM":
         model = Sequential()
-        model.add(LSTM(LayerNum[0],input_shape=(1,para.shape), return_sequences=True))
+        model.add(LSTM(LayerNum[0],input_shape= para.inputShape, return_sequences=True))
         for i in LayerNum[1:-1]:
             model.add(LSTM(i, return_sequences=True))
         model.add(LSTM(LayerNum[-1]))
         # model.add(Dropout(0.1))
         model.add(Dense(1, activation = gpara.activate))
-        opt = optimizers.RMSprop(lr=gpara.lr) ##調整learning rate
+        # opt = optimizers.RMSprop(lr=gpara.lr) ##調整learning rate
 
     elif name == "BiLSTM":
         model = Sequential()
-        model.add(Bidirectional(LSTM(LayerNum[0], return_sequences=True, stateful=False), merge_mode="concat",input_shape=(1,para.shape)))
+        model.add(Bidirectional(LSTM(LayerNum[0], return_sequences=True, stateful=False), merge_mode="concat",input_shape= para.inputShape))
         for i in LayerNum[1:-1]:
             model.add(Bidirectional(LSTM(i, return_sequences=True)))
+            # model.add((LSTM(i, return_sequences=True)))
         model.add(Bidirectional(LSTM(LayerNum[-1])))
         # model.add(Dropout(0.1))
         model.add(Dense(1, activation = gpara.activate))
-        opt = optimizers.RMSprop(lr=gpara.lr) ##調整learning rate    
+        # opt = optimizers.RMSprop(lr=gpara.lr) ##調整learning rate    
 
+    # elif name == "attentionBiLSTM":
+    #     inputs = Input(input_shape= para.inputShape)
+    #     #注意力層
+    #     attentionProbs = Dense(para.inputShape[1], activation='softmax', name='attention_vec')(inputs)
+    #     attentionMul = Multiply()([inputs, attentionProbs])
+    #     attentionMul = Dense(64)(attentionMul)
+    #     model = Sequential()
+    #     model.add(LSTM(LayerNum[0],input_shape= para.inputShape, return_sequences=True))
+    #     model.add(Dense(1,activation='sigmoid')(attentionMul))
+    #     opt = optimizers.RMSprop(lr=gpara.lr)
+        
     elif name == "RNN":
         model = Sequential()
         # model.add(Flatten())
-        model.add(SimpleRNN(LayerNum[0], input_shape=( para.TStep+1, para.FeatureN)))
+        model.add(SimpleRNN(LayerNum[0], input_shape= para.inputShape, return_sequences=True))
+        for i in LayerNum[1:-1]:
+            model.add(SimpleRNN(i, return_sequences=True))
         # model.add(RNN(16,activation='relu'))
         model.add(Dense(LayerNum[-1], activation='relu'))
         model.add(Dense(1, kernel_initializer='normal', activation= gpara.activate))
-    
+        # opt = optimizers.RMSprop(lr=gpara.lr)
     elif name == "Seq2Seq":
         "多對一"
-        inputs = Input(shape=(para.TStep+1, para.FeatureN))
-        dropout_layer = Dropout(0.3)
+        inputs = Input(shape = para.inputShape)
+        dropout_layer = Dropout(0)
         # add Dropout layer
         encoder_outputs = dropout_layer(inputs)
-        encoder_outputs, state_h, state_c = LSTM(128, return_state=True)(encoder_outputs)
+        encoder_outputs, state_h, state_c = LSTM(256, return_state=True)(encoder_outputs)
         encoder_states = [state_h, state_c]
 
         # Set up the decoder
-        decoder_inputs = Input(shape=(para.TStep+1, para.FeatureN))
+        decoder_inputs = Input(shape= para.inputShape)
         decoder_embeddings = decoder_inputs  # Remove the embedding layer
-        decoder_outputs, _, _ = LSTM(128, return_sequences=False, return_state=True)(decoder_embeddings, initial_state=encoder_states)
-        outputs = Dense(1, activation="relu")(decoder_outputs)
-
+        decoder_outputs, _, _ = LSTM(256, return_sequences=False, return_state=True)(decoder_embeddings, initial_state=encoder_states)
+        outputs = Dense(1, activation="relu")(decoder_outputs) #多對多
+        # outputs = Dense(1, activation="relu")(decoder_outputs)
         # Define the model
         model = Model([inputs, decoder_inputs], outputs)
     elif name == "CNN-LSTM":
         cnn = Sequential()
-        cnn.add(Conv1D(filters=64, kernel_size=1, activation="relu", input_shape=( para.TStep+1, para.FeatureN)))
+        cnn.add(Conv1D(filters=64, kernel_size=1, activation="relu",input_shape= para.inputShape))
         cnn.add(MaxPooling1D(pool_size=2))
         cnn.add(Flatten())
         model = Sequential()
         model.add(TimeDistributed(cnn))
         model.add(LSTM(16))
         model.add(Dense(1, activation = gpara.activate))
-
+    opt = optimizers.RMSprop(lr=gpara.lr)
     model.compile(optimizer=opt, loss=gpara.loss, metrics=['mae'])
     model.summary()
     return model
-def machineLearning(name):
+def machineLearning(name, gpara):
     if name == 'SVM':
-        model = svm.SVR(kernel='rbf', gamma=0.125,epsilon=0.007813,C=8)
+        model = svm.SVR(kernel=gpara.kernal, gamma=gpara.gamma ,epsilon=gpara.epsilon, C=gpara.C, degree=gpara.degree)
     return model
 
 def FittingModel(model,name,X_train, Y_train, gpara):
@@ -99,7 +114,7 @@ def Prediction(model,name,X_test):
     forcasting = model.predict(X_test)
     return forcasting
 
-def ForcastCurve( plotRange, Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
+def ForcastCurve( modelname, plotRange, Npara, F_Inv, Y_Inv, GP, subtitle, title, fileName=""):
     
 
     x = np.arange(len(Y_Inv[:plotRange]))
@@ -107,9 +122,14 @@ def ForcastCurve( plotRange, Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
     YT = (Y_Inv).flatten()
     YP = (F_Inv).flatten()
     d = {  'Observation':YT, 'Forcast':YP }
-    if GP == "":
+    if modelname == "SVM":
         g = {
-            'Tstep':Npara.TStep
+            'gamma':GP.gamma,
+            'C':GP.C, 
+            'epsilon':GP.epsilon,
+            'degree':GP.degree, 
+            'kernal':GP.kernal,
+            'Tsteplist':f"{Npara.TStepList}",
         }
     else:
         g = {   'activate':GP.activate, 
@@ -132,12 +152,13 @@ def ForcastCurve( plotRange, Npara, F_Inv, Y_Inv, GP,subtitle, fileName=""):
     plt.figure()
     plt.plot(x,YT[:plotRange],label='Observation value')
     plt.plot(x,YP[:plotRange],label='Forcasting value')
-    plt.title(f"{Npara.TPlus}AllTestEvent")
+    plt.axhline(2.2,color="red", linestyle="--")
+    plt.title(f"{Npara.TPlus}All{title}Event")
     plt.xlabel("Time")
     plt.xlabel("WaterLevel")
     plt.legend()
     # plt.savefig('TestCase.png')
-    return plt.savefig(f'{fileName}TestCase.png')
+    return plt.savefig(f'{fileName}{title}Case.png')
 def MSFForcastCurve(d, i, Y_Inv, F_Inv ):
     ""
     x = np.arange(len(Y_Inv))
@@ -188,10 +209,14 @@ def plotMegiMSF(dff, importPath):
     x = np.arange(19)
     plt.rcParams["figure.figsize"] = (11, 8)
     plt.figure()
+    plt.axhline(2.2,color="red", linestyle="--")
     plt.plot(x,dff[0],label='Observation value')
     plt.plot(x,dff[1][:],label='Forcasting value')
     for p in range(2,19):
         plt.plot(x[p-1:],dff[p][p-1:],label=f'Forcasting value{p}')
+    xmajorLocator = MultipleLocator(1) #設置間隔
+    ax = plt.gca()
+    ax.xaxis.set_major_locator(xmajorLocator)
     plt.title(f"MegiEvent")
     plt.xlabel("Time")
     plt.xlabel("WaterLevel")

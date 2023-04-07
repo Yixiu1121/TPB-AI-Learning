@@ -10,6 +10,10 @@ def DF2CSV(df,fileName):
     # "預設沒有index & header"
     return df.to_csv(fileName+".csv",index = True, header = False)
 
+def DF2CSVH(df,fileName):
+    # "預設沒有index & 有header"
+    return df.to_csv(fileName+".csv",index = False, header = True)
+
 def DF2List(df):
     return df.values.tolist()
 

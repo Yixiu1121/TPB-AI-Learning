@@ -10,7 +10,7 @@ import random
 
 # 因子調整
 init_input = ['Shihimen','Feitsui','TPB','SMInflow','SMOutflow','FTOutflow','Tide','WaterLevel']  #8個
-input = ['TPB','SMOutflow','FTOutflow','Tide','WaterLevel']   #7個
+input = ['TPB','SMInflow','FTOutflow','Tide','WaterLevel']   #7個
 Tr = ImportCSV("Train",None) #SM FT TPB SMInflow SMOutflow FTOutflow Tide WL
 Ts =  ImportCSV("Test",None)
 # Megi = ImportCSV("Megi",None)
@@ -40,7 +40,7 @@ Fors = Ts[input]
 # Fors["Tide"] = Fors["Tide"]*RandomList2
 
 # 檔名
-subtitle = "0325t-1"
+subtitle = "extendWL for SMI"
 # 網格搜尋法參數調整
 activate = ['relu','tanh']
 opt = ['rmsprop', 'adam']
@@ -55,28 +55,27 @@ TPB_Data = DataSet()
 TPB_Data.TrainingData = Tr
 TPB_Data.TestData =  Ts
 # input = ['TPB','SMInflow','SMOutflow','FTOutflow','WaterLevel']   #7個/
-endTimeList=[0,-1,0,0,0] #取到t-1, t
-Fors["SMOutflow"] = Fors["SMOutflow"].shift(1) #下移一格 讓SMOutFlow 多步階從t-1開始
+endTimeList=[0,0,0,0,0] #取到t-1, t
+# Fors["SMOutflow"] = Fors["SMOutflow"].shift(2) #下移一格 讓SMOutFlow 多步階從t-1開始
+# Fors["SMOutflow"] = Fors["SMOutflow"].shift(-1) #上移一格 讓SMOutFlow 多步階從t+1開始
+# Fors["SMInflow"] = Fors["SMInflow"].shift(-1) #上移一格 讓SMInflow 多步階從t+1開始
 # 訓練模型 
-num = 1
-epsilon = 0.0009765625 #0.00390625
-degree = 0
-C = 8
-gamma = 0.5
+num = 3
 
+# SMI = 3
 # layer = [64,128,64]
-for R in [3]:
-    for SM in [3]:
+R = 3
+for T in [3]:
+    for SMO in [3]:
         for FT in [3]:
                 # for num, endTimeList in enumerate([[0]], start=1):
-                for WL in [3]:
+                for WL in [6]:
                     num +=1 
                     TimeStep = 3
                     NPara = Para()
                     NPara.TStep = TimeStep
                     # NPara.shape = sum(timeList)+sum(endTimeList)+len(timeList)
-                    T = 6
-                    NPara.TStepList = [R, SM, FT, T, WL]
+                    NPara.TStepList = [R, SMO, FT, T, WL]
                     NPara.EDTStepList = endTimeList
                     NPara.TPlus = 1
                     NPara.FeatureN = len(input) #7
@@ -90,7 +89,7 @@ for R in [3]:
                     #[64,64,64,64],[128,128,8],[16,16,16,16],[8,8,8],[64,128,256,128,64],[8,16,32],[32,32,32,20],[8,16]
                     #[256,128,64],[32,32,32]
                     for layer in [[64,128,64]]:   #[64,128,64],[128,256,128],[128,256]
-                        for name in ["SVM"]: #,"RNN","SVM","Seq2Seq" ,"BiLSTM","LSTM"
+                        for name in ["Seq2Seq" ,"BiLSTM", "LSTM"]: #,"RNN","SVM","Seq2Seq" ,"BiLSTM","LSTM"
                             NPara.Layer = layer
                             NPara.ModelName = name
                             NPara.FeatureN = len(input) #7
@@ -98,15 +97,11 @@ for R in [3]:
                             # for para in []
                             if name == "SVM":
                                 GP = GPara()
-                                GP.gamma = gamma
-                                GP.C = C
+                                GP.gamma = 0.5
+                                GP.C = 8
                                 GP.kernal = 'rbf'
-                                GP.epsilon = epsilon  ##越小越好
-                                GP.degree = degree
-                                epsilon = 0.0009765625 #0.00390625
-                                degree = 0
-                                C = 8
-                                gamma = 0.5
+                                GP.epsilon = 0.00390625  ##越小越好
+                                GP.degree = 0
                                 savePath = f"({num})"
                                 newModel=machineLearning(name, GP)
                                 history, fitModel = FittingModel(newModel,name, X_train, Y_train, GP)
@@ -122,70 +117,86 @@ for R in [3]:
                                 savePath = f"{len(layer)}{layer[0]}({num})"
                                 # savePath = f"{len(layer)}{layer[0]}(bi-bi)"
                                 newModel = deepLearning(name, NPara, GP, layer)
+                                #訓練
                                 history, fitModel = FittingModel(newModel,name,X_train, Y_train, GP)
                                 CheckFile(f"{path}")
+                                #訓練 
                                 plotHistory(history,f"{path}\{savePath}")
                                 ##存檔
                                 CheckFile(f"saved_model\{name}")
+                                # 訓練 
                                 fitModel.save(f'saved_model\{path}\{savePath}.h5')
+                            
+                            #載入model 
+                            # fitModel = tf.keras.models.load_model(f'saved_model\{path}\{savePath}.h5')
+                            #
                             forcasting = Prediction(fitModel,name, X_test)
                             forcastingTr = Prediction(fitModel,name, X_train)
                             ##反正規　畫圖
                             Y_Inv = Npr._InverseCol(Y_test)
                             F_Inv = Npr._InverseCol(forcasting) 
-                            PlotResult = ForcastCurve( name, 400, NPara, F_Inv, Y_Inv, GP ,subtitle, "test", fileName=f"{path}\{savePath}")
+                            PlotResult = ForcastCurve( name, 200, NPara, F_Inv, Y_Inv, GP ,subtitle, "test", fileName=f"{path}\{savePath}")
                             
                             Yr_Inv = Npr._InverseCol(Y_train)
                             Fr_Inv = Npr._InverseCol(forcastingTr) 
                             PlotResult = ForcastCurve( name, 1000, NPara, Fr_Inv, Yr_Inv, GP ,subtitle, "train", fileName=f"{path}\{savePath}(train)")
 
 
+                            # 鬍鬚圖&每條歷線指標(check t-1, t+1正確) 
+                            Ty = ["Dujan", "Megi", "Mitag"]
+                            Starttime = [21, 143, 606] #起始點 Dujan21, Megi143  ,Mitag606
+                            for ty, starttime in zip(Ty, Starttime):
+                                endLength = 25 #往後長度 +12
 
-
-
-                            # 鬍鬚圖(error: t-1的放錯)
-                            Single = [Y_Inv[28:50]]
-                            Time = 0
-                            ForsOne = Fors[28:]
-                            ForsOne = ForsOne[max([R, SM, FT, T, WL]):] ## t時刻
-                            # ForsOne = ForsOne[max(timeList):] ## t時刻
-                            event = X_test[28:50]
-                            for startPoint in range(len(event)):
-                                temp = []
-                                Time+=1
-                                Xtest = np.reshape(event[startPoint], (1, 1, event[startPoint].shape[1]))
-                                forcasting = Prediction(fitModel, NPara.ModelName, Xtest) 
-                                F_Inv = Npr._InverseCol(forcasting) 
-                                temp.append(np.reshape(F_Inv,(1))[0])
-                                
-                                # df = pd.DataFrame()
-                                recursiveTime = startPoint
-                                for i in range(Time+1,20): 
-                                # for i in range(time+1,len(X_test)-2):
-                                    recursiveTime +=1
-                                    new_x, new_y = msf1D(endTimeList = endTimeList, timeList = NPara.TStepList, Fors = ForsOne[recursiveTime], X_test = Xtest , Y_test = "" , forcasting=forcasting)
-                                     
-                                    ## debug
-                                    # df[f"X_test{i}"] = Xtest.flatten()
-                                    # df[f"new_x{i}"] = new_x.flatten()
-                                    # df[f"Fors{i}"] = pd.Series(forsTuple( ForsOne[recursiveTime],forcasting))
-                                    
-                                    Xtest = new_x
-                                    forcasting = Prediction(fitModel, NPara.ModelName, new_x)
+                                obs = Y_Inv[starttime:starttime+endLength+12]
+                                Single = [obs]
+                                Time = 0
+                                ForsOne = Fors[starttime:]
+                                ForsOne = ForsOne[max([R, SMO, FT, T, WL]):] ## t時刻
+                                # ForsOne = ForsOne[max(timeList):] ## t時刻
+                                event = X_test[starttime:starttime+endLength] #25:50 145:175
+                                index12 = {"RMSE":[], "MAE":[], "CC":[], "CE":[], "MSLE":[]} #算每條歷線index
+                                for startPoint in range(len(event)):
+                                    temp = []
+                                    Time+=1
+                                    Xtest = np.reshape(event[startPoint], (1, 1, event[startPoint].shape[1]))
+                                    forcasting = Prediction(fitModel, NPara.ModelName, Xtest) 
                                     F_Inv = Npr._InverseCol(forcasting) 
                                     temp.append(np.reshape(F_Inv,(1))[0])
-                                # DF2CSV(df.T, "msf1fix3")
-                                N = 0
-                                while N < startPoint :    
-                                    temp.insert(0,"")
-                                    N+=1 
-                                Single.append(temp)
-                            df = pd.DataFrame( Single )
-                            DF2CSV(df, f"{path}\{savePath}")
-                            dff = df.T[:20][:19]
-                            plotMegiMSF(dff,f"{path}\{savePath}")
+                                    
+                                    # df = pd.DataFrame()
+                                    recursiveTime = startPoint
+                                    for i in range(Time+1,Time+1+11): 
+                                    # for i in range(time+1,len(X_test)-2):
+                                        recursiveTime +=1
+                                        new_x, new_y = msf1D(endTimeList = endTimeList, timeList = NPara.TStepList, Fors = ForsOne[recursiveTime], X_test = Xtest , Y_test = "" , forcasting=forcasting)
+                                            
+                                        ## debug
+                                        # df[f"X_test{i}"] = Xtest.flatten()
+                                        # df[f"new_x{i}"] = new_x.flatten()
+                                        # df[f"Fors{i}"] = pd.Series(forsTuple( ForsOne[recursiveTime],forcasting))
+                                        
+                                        Xtest = new_x
+                                        forcasting = Prediction(fitModel, NPara.ModelName, new_x)
+                                        F_Inv = Npr._InverseCol(forcasting) 
+                                        temp.append(np.reshape(F_Inv,(1))[0])
+                                    d = dataFunction.Index(np.array(obs[Time:Time+12]),np.array(temp))
+                                    index12["RMSE"].append(d["RMSE"])
+                                    index12["MAE"].append(d["MAE"])
+                                    index12["CC"].append(d["CC"])
+                                    index12["CE"].append(d["CE"])
+                                    index12["MSLE"].append(d["MSLE"])
+                                    # DF2CSV(df.T, "msft+1")
+                                    N = 0
+                                    while N < startPoint :    
+                                        temp.insert(0,"")
+                                        N+=1 
+                                    Single.append(temp)
+                                df = pd.DataFrame( Single )
+                                DF2CSV(df, f"{path}\{savePath}{ty}")
 
-
+                                plotEventMSF(df.T,f"{path}\{savePath}t",xlength = endLength+12, eventName = ty)
+                                DF2CSVH(pd.DataFrame(index12), f"{path}\{savePath}{ty}index")
                     # #同步長鬍鬚圖
                     # Single = [Y_Inv[20:50]]
                     # time = 0

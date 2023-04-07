@@ -28,7 +28,7 @@ class dataFunction():
         maxtime = max(timeList) #最大步長時間
         x = []   #預測點的前 N 天的資料
         y = []   #預測點
-        for t in range(maxtime, len(trainOrtest)-TPlus):  # 1258 是訓練集總數
+        for t in range(maxtime, len(trainOrtest)-TPlus-max(endTimeList)):  # 1258 是訓練集總數
             arg_tuple = ()
             for i in range(len(timeList)):
                 arg_tuple += tuple(trainOrtest[t-timeList[i]:t+1+endTimeList[i],i]) #取到
@@ -48,9 +48,10 @@ class dataFunction():
         RMSE = np.sqrt(mean_squared_error(obs, pred))    #RMSE 極端值影響明顯
         MAE = mean_absolute_error(obs, pred)          #MAE        
         MSLE = mean_squared_error(obs, pred)           #MSLE 懲罰被低估的估計大於被高估的估計。
-        CE = r2_score(obs,pred)                      #  R2(CE)  是我們常用的效率係數CE
+        NSE = (1-(np.sum((obs-pred)**2)/np.sum((obs-np.mean(obs))**2)))  #E接近1，表示模式质量好，模型可信度高；E接近0，表示模拟结果接近观测值的平均值水平，即总体结果可信，但过程模拟误差大；E远远小于0，则模型是不可信的。
+        CE = r2_score(obs,pred)                      #  R2(CE)  是我們常用的效率係數CE 跟NSE一樣
         CC = ((obs - obs.mean())*(pred -pred.mean())).sum()/np.sqrt(((obs - obs.mean())**2).sum())/np.sqrt(((pred - pred.mean())**2).sum())
-        d = {'RMSE':RMSE,'MAE':MAE,'CE':CE,'CC':CC}
+        d = {'RMSE':RMSE,'MAE':MAE,'CE':CE,'CC':CC, 'MSLE':MSLE}
         return d
 
 class Processed_Data():

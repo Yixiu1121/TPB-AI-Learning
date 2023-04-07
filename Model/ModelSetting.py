@@ -49,10 +49,10 @@ def deepLearning(name, para, gpara, LayerNum):
         model = Sequential()
         # model.add(Flatten())
         model.add(SimpleRNN(LayerNum[0], input_shape= para.inputShape, return_sequences=True))
-        for i in LayerNum[1:-1]:
-            model.add(SimpleRNN(i, return_sequences=True))
+        # for i in LayerNum[1:-1]:
+        #     model.add(SimpleRNN(i, return_sequences=True))
         # model.add(RNN(16,activation='relu'))
-        model.add(Dense(LayerNum[-1], activation='relu'))
+        # model.add(Dense(LayerNum[-1], activation='relu'))
         model.add(Dense(1, kernel_initializer='normal', activation= gpara.activate))
         # opt = optimizers.RMSprop(lr=gpara.lr)
     elif name == "Seq2Seq":
@@ -75,7 +75,7 @@ def deepLearning(name, para, gpara, LayerNum):
     elif name == "CNN-LSTM":
         cnn = Sequential()
         cnn.add(Conv1D(filters=64, kernel_size=1, activation="relu",input_shape= para.inputShape))
-        cnn.add(MaxPooling1D(pool_size=2))
+        # cnn.add(MaxPooling1D(pool_size=2))
         cnn.add(Flatten())
         model = Sequential()
         model.add(TimeDistributed(cnn))
@@ -204,22 +204,22 @@ def plotHistory(history,fileName):
     plt.legend(['Train', 'Test'], loc='upper left')
     return plt.savefig(f'{fileName}loss.png')
 
-def plotMegiMSF(dff, importPath):
+def plotEventMSF(dff, importPath, xlength, eventName):
     "Megi鬍鬚圖"
-    x = np.arange(19)
+    x = np.arange(xlength)
     plt.rcParams["figure.figsize"] = (11, 8)
     plt.figure()
     plt.axhline(2.2,color="red", linestyle="--")
     plt.plot(x,dff[0],label='Observation value')
     plt.plot(x,dff[1][:],label='Forcasting value')
-    for p in range(2,19):
+    for p in range(2,len(dff.columns)):
         plt.plot(x[p-1:],dff[p][p-1:],label=f'Forcasting value{p}')
     xmajorLocator = MultipleLocator(1) #設置間隔
     ax = plt.gca()
     ax.xaxis.set_major_locator(xmajorLocator)
-    plt.title(f"MegiEvent")
+    plt.title(f"{eventName}Event")
     plt.xlabel("Time")
     plt.xlabel("WaterLevel")
     plt.legend()
-    return(plt.savefig(f"{importPath}Dujan鬍鬚圖.png"))
+    return(plt.savefig(f"{importPath}{eventName}鬍鬚圖.png"))
 

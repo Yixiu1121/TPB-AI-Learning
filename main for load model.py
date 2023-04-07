@@ -157,7 +157,7 @@ for ty, starttime in zip(Ty, Starttime):
             forcasting = Prediction(fitModel, NPara.ModelName, new_x)
             F_Inv = Npr._InverseCol(forcasting) 
             temp.append(np.reshape(F_Inv,(1))[0])
-        d = dataFunction.Index(np.array(obs[Time:Time+12]),np.array(temp))
+        d = dataFunction.Index(np.array(obs[Time-1:Time+12-1]),np.array(temp))
         index12["RMSE"].append(d["RMSE"])
         index12["MAE"].append(d["MAE"])
         index12["CC"].append(d["CC"])

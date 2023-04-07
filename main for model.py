@@ -60,7 +60,7 @@ endTimeList=[0,0,0,0,0] #取到t-1, t
 # Fors["SMOutflow"] = Fors["SMOutflow"].shift(-1) #上移一格 讓SMOutFlow 多步階從t+1開始
 # Fors["SMInflow"] = Fors["SMInflow"].shift(-1) #上移一格 讓SMInflow 多步階從t+1開始
 # 訓練模型 
-num = 3
+num = 4
 
 # SMI = 3
 # layer = [64,128,64]
@@ -69,7 +69,7 @@ for T in [3]:
     for SMO in [3]:
         for FT in [3]:
                 # for num, endTimeList in enumerate([[0]], start=1):
-                for WL in [6]:
+                for WL in [8]:
                     num +=1 
                     TimeStep = 3
                     NPara = Para()
@@ -88,7 +88,7 @@ for T in [3]:
                     Fors = Npr._ForcastNormal(Fors)
                     #[64,64,64,64],[128,128,8],[16,16,16,16],[8,8,8],[64,128,256,128,64],[8,16,32],[32,32,32,20],[8,16]
                     #[256,128,64],[32,32,32]
-                    for layer in [[64,128,64]]:   #[64,128,64],[128,256,128],[128,256]
+                    for layer in [[128,256,128]]:   #[64,128,64],[128,256,128],[128,256]
                         for name in ["Seq2Seq" ,"BiLSTM", "LSTM"]: #,"RNN","SVM","Seq2Seq" ,"BiLSTM","LSTM"
                             NPara.Layer = layer
                             NPara.ModelName = name

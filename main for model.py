@@ -10,7 +10,7 @@ import random
 
 # 因子調整
 init_input = ['Shihimen','Feitsui','TPB','SMInflow','SMOutflow','FTOutflow','Tide','WaterLevel']  #8個
-input = ['TPB','SMInflow','FTOutflow','Tide','WaterLevel']   #7個
+input = ['TPB','SMOutflow','FTOutflow','Tide','WaterLevel']   #7個
 Tr = ImportCSV("Train",None) #SM FT TPB SMInflow SMOutflow FTOutflow Tide WL
 Ts =  ImportCSV("Test",None)
 # Megi = ImportCSV("Megi",None)
@@ -30,7 +30,7 @@ Tr = Tr[input]
 Ts = Ts[input]
 
 # 預報值
-Fors = Ts[input]
+OringinalFors = Ts[input]
 # RandomList = []
 # RandomList2 = []
 # for i in range(len(Fors["Tide"])):
@@ -40,7 +40,7 @@ Fors = Ts[input]
 # Fors["Tide"] = Fors["Tide"]*RandomList2
 
 # 檔名
-subtitle = "extendWL for SMI"
+subtitle = "0529"
 # 網格搜尋法參數調整
 activate = ['relu','tanh']
 opt = ['rmsprop', 'adam']
@@ -55,21 +55,23 @@ TPB_Data = DataSet()
 TPB_Data.TrainingData = Tr
 TPB_Data.TestData =  Ts
 # input = ['TPB','SMInflow','SMOutflow','FTOutflow','WaterLevel']   #7個/
-endTimeList=[0,0,0,0,0] #取到t-1, t
+endTimeList=[0,0,0,0,0] #取到t-1, t 
+OringinalFors["SMOutflow"] = OringinalFors["SMOutflow"].shift(-endTimeList[1]) 
 # Fors["SMOutflow"] = Fors["SMOutflow"].shift(2) #下移一格 讓SMOutFlow 多步階從t-1開始
-# Fors["SMOutflow"] = Fors["SMOutflow"].shift(-1) #上移一格 讓SMOutFlow 多步階從t+1開始
+# Fors["SMOutflow"] = Fors["SMOutflow"].shift(-2) #上移一格 讓SMOutFlow 多步階從t+1開始
 # Fors["SMInflow"] = Fors["SMInflow"].shift(-1) #上移一格 讓SMInflow 多步階從t+1開始
 # 訓練模型 
-num = 4
+num = 0
 
 # SMI = 3
 # layer = [64,128,64]
 R = 3
-for T in [3]:
+T = 3
+for epoch in [300]:
     for SMO in [3]:
-        for FT in [3]:
+        for FT in [1]:
                 # for num, endTimeList in enumerate([[0]], start=1):
-                for WL in [8]:
+                for WL in [10]:
                     num +=1 
                     TimeStep = 3
                     NPara = Para()
@@ -85,11 +87,11 @@ for T in [3]:
                     NPara.inputShape = (X_train.shape[1],X_train.shape[2])
                     # print (pr._Normalization) 
                     ## 輸入項預報值正規化
-                    Fors = Npr._ForcastNormal(Fors)
+                    Fors = Npr._ForcastNormal(OringinalFors)
                     #[64,64,64,64],[128,128,8],[16,16,16,16],[8,8,8],[64,128,256,128,64],[8,16,32],[32,32,32,20],[8,16]
                     #[256,128,64],[32,32,32]
-                    for layer in [[128,256,128]]:   #[64,128,64],[128,256,128],[128,256]
-                        for name in ["Seq2Seq" ,"BiLSTM", "LSTM"]: #,"RNN","SVM","Seq2Seq" ,"BiLSTM","LSTM"
+                    for layer in [[64,128,256],[128,256,128]]:   #[64,128,64],[128,256,128],[128,256]
+                        for name in ["Seq2Seq"]: #,"RNN","SVM","Seq2Seq" ,"BiLSTM","LSTM"
                             NPara.Layer = layer
                             NPara.ModelName = name
                             NPara.FeatureN = len(input) #7
@@ -110,8 +112,8 @@ for T in [3]:
                                 GP = GPara()
                                 GP.activate = 'relu'
                                 GP.btcsz = 16 #16 或 32
-                                GP.opt =  'rmsprop' #'rmsprop' 'adam'
-                                GP.epochs = 100
+                                GP.opt =  'adamW' #'rmsprop' 'adam' 'adamW'
+                                GP.epochs = epoch
                                 GP.loss = "mae" #mae msle
                                 GP.lr = 0.00005
                                 savePath = f"{len(layer)}{layer[0]}({num})"
@@ -143,10 +145,10 @@ for T in [3]:
 
 
                             # 鬍鬚圖&每條歷線指標(check t-1, t+1正確) 
-                            Ty = ["Dujan", "Megi", "Mitag"]
-                            Starttime = [21, 143, 606] #起始點 Dujan21, Megi143  ,Mitag606
+                            Ty = ["Dujan", "Megi", "Lekima", "Mitag"] #Dujan0, Megi121, Lekima430  ,Mitag584, 
+                            Starttime = [0, 121, 430, 584] #起始點 Dujan21, Megi143  ,Mitag606   13+max([R, SMO, FT, T, WL])
                             for ty, starttime in zip(Ty, Starttime):
-                                endLength = 25 #往後長度 +12
+                                endLength = 65-12 #往後長度 +12
 
                                 obs = Y_Inv[starttime:starttime+endLength+12]
                                 Single = [obs]
@@ -180,7 +182,7 @@ for T in [3]:
                                         forcasting = Prediction(fitModel, NPara.ModelName, new_x)
                                         F_Inv = Npr._InverseCol(forcasting) 
                                         temp.append(np.reshape(F_Inv,(1))[0])
-                                    d = dataFunction.Index(np.array(obs[Time:Time+12]),np.array(temp))
+                                    d = dataFunction.Index(np.array(obs[Time-1:Time+12-1]),np.array(temp))
                                     index12["RMSE"].append(d["RMSE"])
                                     index12["MAE"].append(d["MAE"])
                                     index12["CC"].append(d["CC"])

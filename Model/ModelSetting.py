@@ -8,83 +8,101 @@ from Model.Processing import dataFunction
 from Control.ImportData import *
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MultipleLocator
-
+import tensorflow as tf
 
 # LayerNum = [16,16,8]
 
 def deepLearning(name, para, gpara, LayerNum):
-    if name == "LSTM":
-        model = Sequential()
-        model.add(LSTM(LayerNum[0],input_shape= para.inputShape, return_sequences=True))
-        for i in LayerNum[1:-1]:
-            model.add(LSTM(i, return_sequences=True))
-        model.add(LSTM(LayerNum[-1]))
-        # model.add(Dropout(0.1))
-        model.add(Dense(1, activation = gpara.activate))
-        # opt = optimizers.RMSprop(lr=gpara.lr) ##調整learning rate
+    # with tf.device('/GPU:0'):
+        if name == "LSTM":
+            model = Sequential()
+            model.add(LSTM(LayerNum[0],input_shape= para.inputShape, return_sequences=True))
+            for i in LayerNum[1:-1]:
+                model.add(LSTM(i, return_sequences=True))
+            model.add(LSTM(LayerNum[-1]))
+            # model.add(Dropout(0.1))
+            model.add(Dense(1, activation = gpara.activate))
+            # opt = optimizers.RMSprop(lr=gpara.lr) ##調整learning rate
 
-    elif name == "BiLSTM":
-        model = Sequential()
-        model.add(Bidirectional(LSTM(LayerNum[0], return_sequences=True, stateful=False), merge_mode="concat",input_shape= para.inputShape))
-        for i in LayerNum[1:-1]:
-            model.add(Bidirectional(LSTM(i, return_sequences=True)))
-            # model.add((LSTM(i, return_sequences=True)))
-        model.add(Bidirectional(LSTM(LayerNum[-1])))
-        # model.add(Dropout(0.1))
-        model.add(Dense(1, activation = gpara.activate))
-        # opt = optimizers.RMSprop(lr=gpara.lr) ##調整learning rate    
+        elif name == "BiLSTM":
+            model = Sequential()
+            model.add(Bidirectional(LSTM(LayerNum[0], return_sequences=True, stateful=False), merge_mode="concat",input_shape= para.inputShape))
+            for i in LayerNum[1:-1]:
+                model.add(Bidirectional(LSTM(i, return_sequences=True)))
+                # model.add((LSTM(i, return_sequences=True)))
+            model.add(Bidirectional(LSTM(LayerNum[-1])))
+            # model.add(Dropout(0.1))
+            model.add(Dense(1, activation = gpara.activate))
+            # opt = optimizers.RMSprop(lr=gpara.lr) ##調整learning rate    
 
-    # elif name == "attentionBiLSTM":
-    #     inputs = Input(input_shape= para.inputShape)
-    #     #注意力層
-    #     attentionProbs = Dense(para.inputShape[1], activation='softmax', name='attention_vec')(inputs)
-    #     attentionMul = Multiply()([inputs, attentionProbs])
-    #     attentionMul = Dense(64)(attentionMul)
-    #     model = Sequential()
-    #     model.add(LSTM(LayerNum[0],input_shape= para.inputShape, return_sequences=True))
-    #     model.add(Dense(1,activation='sigmoid')(attentionMul))
-    #     opt = optimizers.RMSprop(lr=gpara.lr)
-        
-    elif name == "RNN":
-        model = Sequential()
-        # model.add(Flatten())
-        model.add(SimpleRNN(LayerNum[0], input_shape= para.inputShape, return_sequences=True))
-        # for i in LayerNum[1:-1]:
-        #     model.add(SimpleRNN(i, return_sequences=True))
-        # model.add(RNN(16,activation='relu'))
-        # model.add(Dense(LayerNum[-1], activation='relu'))
-        model.add(Dense(1, kernel_initializer='normal', activation= gpara.activate))
-        # opt = optimizers.RMSprop(lr=gpara.lr)
-    elif name == "Seq2Seq":
-        "多對一"
-        inputs = Input(shape = para.inputShape)
-        dropout_layer = Dropout(0)
-        # add Dropout layer
-        encoder_outputs = dropout_layer(inputs)
-        encoder_outputs, state_h, state_c = LSTM(256, return_state=True)(encoder_outputs)
-        encoder_states = [state_h, state_c]
+        # elif name == "attentionBiLSTM":
+        #     inputs = Input(input_shape= para.inputShape)
+        #     #注意力層
+        #     attentionProbs = Dense(para.inputShape[1], activation='softmax', name='attention_vec')(inputs)
+        #     attentionMul = Multiply()([inputs, attentionProbs])
+        #     attentionMul = Dense(64)(attentionMul)
+        #     model = Sequential()
+        #     model.add(LSTM(LayerNum[0],input_shape= para.inputShape, return_sequences=True))
+        #     model.add(Dense(1,activation='sigmoid')(attentionMul))
+        #     opt = optimizers.RMSprop(lr=gpara.lr)
+            
+        elif name == "RNN":
+            model = Sequential()
+            # model.add(Flatten())
+            model.add(SimpleRNN(LayerNum[0], input_shape= para.inputShape, return_sequences=True))
+            # for i in LayerNum[1:-1]:
+            #     model.add(SimpleRNN(i, return_sequences=True))
+            # model.add(RNN(16,activation='relu'))
+            # model.add(Dense(LayerNum[-1], activation='relu'))
+            model.add(Dense(1, kernel_initializer='normal', activation= gpara.activate))
+            # opt = optimizers.RMSprop(lr=gpara.lr)
+        elif name == "Seq2Seq":
+            "多對一"
+            inputs = Input(shape = para.inputShape)
+            dropout_layer = Dropout(0)
+            # add Dropout layer
+            encoder_outputs = dropout_layer(inputs)
+            encoder_outputs, state_h, state_c = LSTM(256, return_state=True)(encoder_outputs)
+            encoder_states = [state_h, state_c]
 
-        # Set up the decoder
-        decoder_inputs = Input(shape= para.inputShape)
-        decoder_embeddings = decoder_inputs  # Remove the embedding layer
-        decoder_outputs, _, _ = LSTM(256, return_sequences=False, return_state=True)(decoder_embeddings, initial_state=encoder_states)
-        outputs = Dense(1, activation="relu")(decoder_outputs) #多對多
-        # outputs = Dense(1, activation="relu")(decoder_outputs)
-        # Define the model
-        model = Model([inputs, decoder_inputs], outputs)
-    elif name == "CNN-LSTM":
-        cnn = Sequential()
-        cnn.add(Conv1D(filters=64, kernel_size=1, activation="relu",input_shape= para.inputShape))
-        # cnn.add(MaxPooling1D(pool_size=2))
-        cnn.add(Flatten())
-        model = Sequential()
-        model.add(TimeDistributed(cnn))
-        model.add(LSTM(16))
-        model.add(Dense(1, activation = gpara.activate))
-    opt = optimizers.RMSprop(lr=gpara.lr)
-    model.compile(optimizer=opt, loss=gpara.loss, metrics=['mae'])
-    model.summary()
-    return model
+            # Set up the decoder
+            decoder_inputs = Input(shape= para.inputShape)
+            decoder_embeddings = decoder_inputs  # Remove the embedding layer
+            decoder_outputs, _, _ = LSTM(256, return_sequences=False, return_state=True)(decoder_embeddings, initial_state=encoder_states)
+            outputs = Dense(1, activation="relu")(decoder_outputs) #多對多
+            # outputs = Dense(1, activation="relu")(decoder_outputs)
+            # Define the model
+            model = Model([inputs, decoder_inputs], outputs)
+        elif name == "Seq2Seq-R":
+            "多對一"
+            inputs = Input(shape = para.inputShape)
+            dropout_layer = Dropout(0)
+            # add Dropout layer
+            encoder_outputs = dropout_layer(inputs)
+            encoder_outputs, state_h, state_c = SimpleRNN(256, return_state=True)(encoder_outputs)
+            encoder_states = [state_h, state_c]
+
+            # Set up the decoder
+            decoder_inputs = Input(shape= para.inputShape)
+            decoder_embeddings = decoder_inputs  # Remove the embedding layer
+            decoder_outputs, _, _ = SimpleRNN(256, return_sequences=False, return_state=True)(decoder_embeddings, initial_state=encoder_states)
+            outputs = Dense(1, activation="relu")(decoder_outputs) #多對多
+            # outputs = Dense(1, activation="relu")(decoder_outputs)
+            # Define the model
+            model = Model([inputs, decoder_inputs], outputs)
+        elif name == "CNN-LSTM":
+            cnn = Sequential()
+            cnn.add(Conv1D(filters=64, kernel_size=1, activation="relu",input_shape= para.inputShape))
+            # cnn.add(MaxPooling1D(pool_size=2))
+            cnn.add(Flatten())
+            model = Sequential()
+            model.add(TimeDistributed(cnn))
+            model.add(LSTM(16))
+            model.add(Dense(1, activation = gpara.activate))
+        opt = optimizers.RMSprop(lr=gpara.lr)
+        model.compile(optimizer=opt, loss=gpara.loss, metrics=['mae'])
+        model.summary()
+        return model
 def machineLearning(name, gpara):
     if name == 'SVM':
         model = svm.SVR(kernel=gpara.kernal, gamma=gpara.gamma ,epsilon=gpara.epsilon, C=gpara.C, degree=gpara.degree)
@@ -206,20 +224,40 @@ def plotHistory(history,fileName):
 
 def plotEventMSF(dff, importPath, xlength, eventName):
     "Megi鬍鬚圖"
+    
+    plt.rcParams["font.family"] = 'Times New Roman'
     x = np.arange(xlength)
+    
+    
     plt.rcParams["figure.figsize"] = (11, 8)
     plt.figure()
-    plt.axhline(2.2,color="red", linestyle="--")
-    plt.plot(x,dff[0],label='Observation value')
-    plt.plot(x,dff[1][:],label='Forcasting value')
+    
+    plt.plot(x,dff[1][:],color="cornflowerblue", label="Forecast")
     for p in range(2,len(dff.columns)):
-        plt.plot(x[p-1:],dff[p][p-1:],label=f'Forcasting value{p}')
-    xmajorLocator = MultipleLocator(1) #設置間隔
+        plt.plot(x[p-1:],dff[p][p-1:],color="cornflowerblue")
+    plt.plot(x,dff[0],color="black", label="Observation") #, linestyle=":"
+    plt.axhline(2.2,color="red", linestyle="--", label="Emergency level")
     ax = plt.gca()
+    xmajorLocator = MultipleLocator(2) #設置間隔
     ax.xaxis.set_major_locator(xmajorLocator)
-    plt.title(f"{eventName}Event")
-    plt.xlabel("Time")
-    plt.xlabel("WaterLevel")
-    plt.legend()
+    ax.spines['right'].set_visible(False) #邊框
+    ax.spines['top'].set_visible(False)
+    yminorLocator = MultipleLocator(.5/2) #将此y轴次刻度标签设置为0.1的倍数
+    xminorLocator = MultipleLocator(1)
+    ax.yaxis.set_minor_locator(yminorLocator)
+    ax.xaxis.set_minor_locator(xminorLocator)
+    parameters = {'axes.labelsize': 18,   #x, y 標籤字體大小
+        'axes.titlesize': 20,     #标题的字体大小
+          'figure.titlesize':20,
+          'xtick.labelsize':16,
+          'ytick.labelsize':16,
+          'legend.fontsize':16} #
+    plt.rcParams.update(parameters)
+    plt.xlim(0, 65) #x軸從零開始
+    plt.ylim(-2.0, 5.0)
+    plt.title(f"Typhoon {eventName}")
+    plt.xlabel("Time (h)", fontsize = 20)
+    plt.ylabel("WaterLevel (m)", fontsize = 20)
+    plt.legend(loc='upper right')
     return(plt.savefig(f"{importPath}{eventName}鬍鬚圖.png"))
 

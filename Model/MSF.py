@@ -19,6 +19,13 @@ def forsTuple(fors,forcasting):
     fors_tuple += tuple([forcasting])
     return fors_tuple
 
+def forsTupleff(fors,forcasting):
+    fors_tuple = ()
+    for i in range(len(fors)):
+        fors_tuple += tuple([fors[i]])
+    fors_tuple += tuple([forcasting])
+    return fors_tuple
+
 def msf1D(Fors, X_test,Y_test,forcasting,timeList, endTimeList):
         "多步階預報 t+2開始"
         from keras import backend as K

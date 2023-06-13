@@ -40,7 +40,7 @@ Fors = Ts[input]
 # Fors["Tide"] = Fors["Tide"]*RandomList2
 
 # 檔名
-subtitle = "extendWL for SMO"
+subtitle = "0530"
 name = "SVM"
 # timeList = [6,6,6,12,12,12,12]
 # shape = sum(timeList)+len(timeList)
@@ -54,7 +54,7 @@ endTimeList=[0,0,0,0,0] #取到t-1, t
 # Fors["SMOutflow"] = Fors["SMOutflow"].shift(-1) #上移一格 讓SMOutFlow 多步階從t+1開始
 # Fors["SMInflow"] = Fors["SMInflow"].shift(-1) #上移一格 讓SMInflow 多步階從t+1開始
 # 訓練模型 
-num = 4
+num = 0
 epsilon = 2**-4 #0.00390625(2^-8) 0.0009765625(2^-10)
 degree = 0
 C = 4
@@ -63,9 +63,9 @@ gamma = 0.5
 # layer = [64,128,64]
 for T in [3]:
     for SMO in [3]:
-        for FT in [3]:
+        for FT in [1]:
                 # for num, endTimeList in enumerate([[0]], start=1):
-                for WL in [8]:
+                for WL in [10]:
                     num +=1 
                     TimeStep = 3
                     NPara = Para()
@@ -110,10 +110,10 @@ for T in [3]:
                     PlotResult = ForcastCurve( name, 1000, NPara, Fr_Inv, Yr_Inv, GP ,subtitle, "train", fileName=f"{path}\{savePath}(train)")
 
                     # 鬍鬚圖&每條歷線指標(check t-1, t+1正確) 
-                    Ty = ["Dujan", "Megi", "Mitag"] #三場颱風
-                    Starttime = [21, 143, 606] #起始點 Dujan21, Megi143  ,Mitag606
+                    Ty = ["Dujan", "Megi", "Lekima", "Mitag"] #三場颱風
+                    Starttime =[0, 121, 430, 584] #起始點 Dujan21, Megi143  ,Mitag606
                     for ty, starttime in zip(Ty, Starttime):
-                        endLength = 25 #往後長度 +12
+                        endLength = 65-12 #往後長度 +12
 
                         obs = Y_Inv[starttime:starttime+endLength+12]
                         Single = [obs]
@@ -147,7 +147,7 @@ for T in [3]:
                                 forcasting = Prediction(fitModel, NPara.ModelName, new_x)
                                 F_Inv = Npr._InverseCol(forcasting) 
                                 temp.append(np.reshape(F_Inv,(1))[0])
-                            d = dataFunction.Index(np.array(obs[Time:Time+12]),np.array(temp))
+                            d = dataFunction.Index(np.array(obs[Time-1:Time+12-1]),np.array(temp))
                             index12["RMSE"].append(d["RMSE"])
                             index12["MAE"].append(d["MAE"])
                             index12["CC"].append(d["CC"])

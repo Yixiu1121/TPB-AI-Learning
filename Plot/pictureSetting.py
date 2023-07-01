@@ -1,6 +1,7 @@
 import numpy as np 
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.animation as animation
 import pandas as pd
 from matplotlib.ticker import MultipleLocator
 import datetime
@@ -36,7 +37,7 @@ def onestepIndex():
     model.append(Md[["RMSE", "MAE", "CE", "CC"]].loc[0])
     model = pd.DataFrame(model) 
     model['model'] = ['Seq2Seq','BiLSTM','LSTM','SVM']
-    model.to_csv(f"{path}/train(IndexAll).csv",index=False)
+    model.to_csv(f"{path}/train(IndexAll)_modify.csv",index=False)
 
     Sd = pd.read_csv(f'{path}{SP}index.csv')
     Bd= pd.read_csv(f'{path}{BP}index.csv')
@@ -358,7 +359,63 @@ def MSFAverageindex(eventList = ['Dujan','Megi','Lekima','Mitag']):
 
     print('平均值已成功存入 averages.csv 檔案。')   
 
+def p3(eventName,time,start_time):
+    path = Path
+    Sdata = pd.read_csv(f'{path}{SP}{eventName}_P3t24.csv',header=None).drop(0,axis=1).T
+    Sdata.rename(columns = {0:'obs'},inplace=True)
 
+    MSFdata = pd.read_csv(f'{path}{SP}{eventName}load.csv',header=None).drop(0,axis=1).T
+    
+    
+    mpl.rcParams['xtick.labelsize'] = 8
+    mpl.rcParams['ytick.labelsize'] = 8
+    mpl.rc('font',family = 'Times New Roman')
+
+    plt.rcParams['mathtext.fontset'] = 'cm'
+    # start_time = '20201001 10:00:00'
+    t = pd.date_range(start=start_time, periods= 65, freq="1H")
+    
+    mm = 1/25.4 # inch 換 毫米
+    fig,ax = plt.subplots(figsize=(91*mm,72*mm)) # 刚才构思的图片长、宽
+    locator = AutoDateLocator(minticks=10)
+    locator.intervald[HOURLY] = [8]  # 10min 为间隔
+    ax.xaxis.set_major_locator(locator=locator)
+
+    mlocator = AutoDateLocator(minticks=10) # 值越小可能只能按小时间隔显示
+    mlocator.intervald[HOURLY] = [4]  # 10min 为间隔
+    ax.xaxis.set_minor_locator(locator=mlocator)
+
+    ymajorLocator = MultipleLocator(1)
+    yminorLocator = MultipleLocator(.5/2) #将此y轴次刻度标签设置为0.1的倍数
+    ax.yaxis.set_minor_locator(yminorLocator)
+    ax.yaxis.set_major_locator(ymajorLocator)
+
+    ax.plot(t,Sdata.obs[:65],color="black", label="Observation", linestyle=":") #, linestyle=":"
+    ax.plot(t,MSFdata[time][:65],color="darkred", label="Seq2Seq-Obs",linewidth=1.5)
+    ax.plot(t,Sdata[time][:65],color="orange", label="Seq2Seq-Fct",linewidth=1.5)
+    ax.axhline(2.2,color="#696969", label="Alert Level 3\n(EL. 2.2)",linewidth=0.5) #, linestyle="--"
+    ax.set_ylim([-2,7])
+    ax.set_xlabel('Time (h)',fontsize=9)
+    ax.set_ylabel('Water Level (m)',fontsize=9)
+    ax.set_title(f"Start Time: {t[time-1]}\nEnd Time: {t[time+12-1]}",fontsize=9)
+    ax.set_facecolor('white')
+    ax.spines['right'].set_visible(False) #邊框
+    ax.spines['top'].set_visible(False)
+
+    ax.set_aspect(1.0/ax.get_data_ratio()*0.55) # 長宽比
+    plt.legend(loc='best',ncol=2,fontsize=7,facecolor='white', framealpha=1,edgecolor='white')
+    # plt.show()
+    # 根据自己定义的方式去画时间刻度
+    formatter = plt.FuncFormatter(time_ticks)
+    # 在图中应用自定义的时间刻度
+    ax.xaxis.set_major_formatter(formatter)
+    import os 
+    Eventdir = f'C:/Users/309/Documents/GitHub/TPB Code/出圖/{eventName}/'
+    folder = os.path.exists(Eventdir)
+    if not folder:
+        os.makedirs(Eventdir)
+    fig.autofmt_xdate()
+    return plt.savefig(f'{Eventdir}{time}_p3c.png',bbox_inches='tight', dpi=300)
 if __name__ == '__main__':
     # onestepIndex()
     # for n,p in zip(['Seq2Seq','BiLSTM','LSTM','SVM'],[SP,BP,LP,MP]):
@@ -366,14 +423,177 @@ if __name__ == '__main__':
     # for e in ['Dujan','Megi','Lekima','Mitag']: #,'Megi','Lekima','Mitag'
     #     for t in [12,15,18,21,24,27,30,33]: #,15,18,21,24,27
     #         plotMSF(e, t)
-    # for e in [Dujan,Megi,Lekima,Mitag]: #,'Megi','Lekima','Mitag'
+
+    '''
+    for e in [Megi]: #,'Megi','Lekima','Mitag'
         # plotALLMSF(e['name'])
         # plotOne(e['name'],e['start_time'],e['num'])
-    #     for t in [12,15,18,21,24,27,30,33]:
-    #         plotMSF(e['name'], t, Dujan['start_time'])
+        for t in [6,7]:
+            plotMSF(e['name'], t, e['start_time'])
+    '''
+    
     # for e in [Meranti]: #,'Megi','Lekima','Mitag'
     #     plotOne(e['name'],e['start_time'],e['num'])
-    MSFAverageindex()
+    # MSFAverageindex()?
 
+    
+    for e in [Megi]:
+        for t in [7,8,9]:
+            p3(e['name'], t, e['start_time'])
+    
+    time = 1
+    ty = Megi
+    for ty in [Megi, Lekima, Mitag]:
+        eventName = ty['name'] #Dujan Megi Lekima Mitag
+        
+        path = Path
+        Sdata = pd.read_csv(f'{path}{SP}{eventName}load.csv', header=None).drop(0, axis=1).T
+        Sdata.rename(columns={0: 'obs'}, inplace=True)
+
+        Mdata = pd.read_csv(f'{path}{SP}{eventName}_P3t24.csv', header=None).drop(0, axis=1).T
+
+        mpl.rcParams['xtick.labelsize'] = 8
+        mpl.rcParams['ytick.labelsize'] = 8
+        mpl.rc('font', family='Times New Roman')
+
+        plt.rcParams['mathtext.fontset'] = 'cm'
+        t = pd.date_range(start=ty['start_time'], periods=77, freq="1H")
+
+        mm = 1 / 25.4  # inch 換 毫米
+        fig, ax = plt.subplots(figsize=(91 * mm, 72 * mm))  # 刚才构思的图片长、宽
+        locator = AutoDateLocator(minticks=10)
+        locator.intervald[HOURLY] = [8]  # 10min 为间隔
+        ax.xaxis.set_major_locator(locator=locator)
+
+        mlocator = AutoDateLocator(minticks=10)  # 值越小可能只能按小时间隔显示
+        mlocator.intervald[HOURLY] = [4]  # 10min 为间隔
+        ax.xaxis.set_minor_locator(locator=mlocator)
+
+        ymajorLocator = MultipleLocator(1)
+        yminorLocator = MultipleLocator(.5 / 2)  # 将此y轴次刻度标签设置为0.1的倍数
+        ax.yaxis.set_minor_locator(yminorLocator)
+        ax.yaxis.set_major_locator(ymajorLocator)
+        ax.plot(t,Sdata.obs,color="black", label="Observation", linestyle=":") # , linestyle=":"
+        seq2seq_line, = ax.plot([], [], color="darkred", label="Seq2Seq-Obs", linewidth=1.5)
+        p3t24_line, = ax.plot([], [], color="orange", label="Seq2Seq-Fct", linewidth=1.5)
+        alert_line = ax.axhline(2.2, color="#696969", label="Alert Level 3\n(EL. 2.2)", linewidth=0.5)  # , linestyle="--"
+        ax.set_ylim([-2, 7])
+        ax.set_xlabel('Time (h)', fontsize=9)
+        ax.set_ylabel('Water Level (m)', fontsize=9)
+        # ax.set_title(f"Start Time: {t[time - 1]}", fontsize=5 ,loc='left')
+        ax.set_title(f"Typhoon {eventName}", fontsize=9 ,loc='center')
+        ax.set_facecolor('white')
+        ax.spines['right'].set_visible(False)  # 邊框
+        ax.spines['top'].set_visible(False)
+        plt.rcParams['animation.ffmpeg_path'] = 'C:/Program Files/ffmpeg-6.0-full_build/bin/ffmpeg.exe'
+        ax.set_aspect(1.0/ax.get_data_ratio()*0.55) # 長宽比
+        plt.legend(loc='best',ncol=2,fontsize=7,facecolor='white', framealpha=1,edgecolor='white')
+        # plt.show()
+        # 根据自己定义的方式去画时间刻度
+        formatter = plt.FuncFormatter(time_ticks)
+        # 在图中应用自定义的时间刻度
+        ax.xaxis.set_major_formatter(formatter)
+        fig.autofmt_xdate()
+        def init():
+            ax.plot(t,Sdata.obs,color="black", label="Observation", linestyle=":")
+            seq2seq_line.set_data([], [])
+            p3t24_line.set_data([], [])
+            return seq2seq_line, p3t24_line
+
+        def update_frame(frame):
+            seq2seq_line.set_data(t, Sdata[frame+1])
+            p3t24_line.set_data(t, Mdata[frame+1])
+            ax.set_title(f"Start Time: {t[frame - 1]}", fontsize=5,loc='left')
+            return seq2seq_line, p3t24_line
+        
+        animation_frames = 53  # Number of frames in the animation
+        ani = animation.FuncAnimation(fig, update_frame, init_func=init, frames=animation_frames, blit=True)
+        
+        Eventdir = f'C:/Users/309/Documents/GitHub/TPB Code/出圖/{eventName}/'
+        FFwriter = animation.FFMpegWriter(fps=10, extra_args=['-vcodec','libx264'])
+        ani.save(f'{Eventdir}_p3.mp4',writer=FFwriter, dpi=300)
+
+
+    # 動畫
+    time = 1
+    ty = Mitag
+    eventName = ty['name'] #Megi Lekima Mitag
+    
+    path = Path
+    Sdata = pd.read_csv(f'{path}{SP}{eventName}load.csv', header=None).drop(0, axis=1).T
+    Sdata.rename(columns={0: 'obs'}, inplace=True)
+
+    Mdata = pd.read_csv(f'{path}{MP}{eventName}.csv', header=None).drop(0, axis=1).T
+    Ldata = pd.read_csv(f'{path}{LP}{eventName}load.csv', header=None).drop(0, axis=1).T
+    Bdata = pd.read_csv(f'{path}{BP}{eventName}load.csv', header=None).drop(0, axis=1).T
+
+    mpl.rcParams['xtick.labelsize'] = 8
+    mpl.rcParams['ytick.labelsize'] = 8
+    mpl.rc('font', family='Times New Roman')
+
+    plt.rcParams['mathtext.fontset'] = 'cm'
+    t = pd.date_range(start=ty['start_time'], periods=77, freq="1H")
+
+    mm = 1 / 25.4  # inch 換 毫米
+    fig, ax = plt.subplots(figsize=(91 * mm, 72 * mm))  # 刚才构思的图片长、宽
+    locator = AutoDateLocator(minticks=10)
+    locator.intervald[HOURLY] = [8]  # 10min 为间隔
+    ax.xaxis.set_major_locator(locator=locator)
+
+    mlocator = AutoDateLocator(minticks=10)  # 值越小可能只能按小时间隔显示
+    mlocator.intervald[HOURLY] = [4]  # 10min 为间隔
+    ax.xaxis.set_minor_locator(locator=mlocator)
+
+    ymajorLocator = MultipleLocator(1)
+    yminorLocator = MultipleLocator(.5 / 2)  # 将此y轴次刻度标签设置为0.1的倍数
+    ax.yaxis.set_minor_locator(yminorLocator)
+    ax.yaxis.set_major_locator(ymajorLocator)
+    ax.plot(t,Sdata.obs,color="black", label="Observation", linestyle=":") # , linestyle=":"
+    svm_line, = ax.plot([], [], color="#1e488f", label="SVM", linewidth=1.5)  # , linestyle=":"
+    lstm_line, = ax.plot([], [], color="#10a674", label="LSTM", linewidth=1.5)
+    bilstm_line, = ax.plot([], [], color="#ff9408", label="BiLSTM", linewidth=1.5)
+    seq2seq_line, = ax.plot([], [], color="darkred", label="Seq2Seq", linewidth=1.5)
+    alert_line = ax.axhline(2.2, color="#696969", label="Alert Level 3\n(EL. 2.2)", linewidth=0.5)  # , linestyle="--"
+    ax.set_ylim([-2, 7])
+    ax.set_xlabel('Time (h)', fontsize=9)
+    ax.set_ylabel('Water Level (m)', fontsize=9)
+    # ax.set_title(f"Start Time: {t[time - 1]}", fontsize=5 ,loc='left')
+    ax.set_title(f"Typhoon {eventName}", fontsize=9 ,loc='center')
+    ax.set_facecolor('white')
+    ax.spines['right'].set_visible(False)  # 邊框
+    ax.spines['top'].set_visible(False)
+    plt.rcParams['animation.ffmpeg_path'] = 'C:/Program Files/ffmpeg-6.0-full_build/bin/ffmpeg.exe'
+    ax.set_aspect(1.0/ax.get_data_ratio()*0.55) # 長宽比
+    plt.legend(loc='best',ncol=3,fontsize=7,facecolor='white', framealpha=1,edgecolor='white')
+    # plt.show()
+    # 根据自己定义的方式去画时间刻度
+    formatter = plt.FuncFormatter(time_ticks)
+    # 在图中应用自定义的时间刻度
+    ax.xaxis.set_major_formatter(formatter)
+    fig.autofmt_xdate()
+    def init():
+        ax.plot(t,Sdata.obs,color="black", label="Observation", linestyle=":")
+        svm_line.set_data([], [])
+        lstm_line.set_data([], [])
+        bilstm_line.set_data([], [])
+        seq2seq_line.set_data([], [])
+        return svm_line, lstm_line, bilstm_line, seq2seq_line,
+
+    def update_frame(frame):
+        svm_line.set_data(t, Mdata[frame+1])
+        lstm_line.set_data(t, Ldata[frame+1])
+        bilstm_line.set_data(t, Bdata[frame+1])
+        seq2seq_line.set_data(t, Sdata[frame+1])
+        ax.set_title(f"Start Time: {t[frame - 1]}", fontsize=5,loc='left')
+        return svm_line, lstm_line, bilstm_line, seq2seq_line
+    
+    animation_frames = 53  # Number of frames in the animation
+    ani = animation.FuncAnimation(fig, update_frame, init_func=init, frames=animation_frames, blit=True)
+    
+    Eventdir = f'C:/Users/309/Documents/GitHub/TPB Code/出圖/{eventName}/'
+    FFwriter = animation.FFMpegWriter(fps=10, extra_args=['-vcodec','libx264'])
+    ani.save(f'{Eventdir}fps5.mp4',writer=FFwriter, dpi=300)
+    
+    # ani.save(f'{Eventdir}{time}.gif', writer='pillow', dpi=300)
 
     

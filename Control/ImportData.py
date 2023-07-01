@@ -1,4 +1,5 @@
 from doctest import testfile
+import imghdr
 # from Model.TPBdata import *
 import pandas as pd
 import os
@@ -30,10 +31,16 @@ def CheckFile(path):
     
 
 if __name__ == "__main__":
-    ModelName = "LSTM"
-    TPlus = "T+N"
-    path = f"{ModelName}\{TPlus}"
-    CheckFile(path)
+    import csv
+    path = "C:\\Users\\309\\Documents\\台北橋石門入流量預報_雨量預報\\57.ShihmenWRPIQ_L_LSTM_SPM_梅姬.csv"
+    with open(path, 'r') as csvfile:
+        reader = csv.reader(csvfile)
+        lis_reader = []
+        for row in reader:
+            if not row or row=="":
+                continue
+            else: lis_reader.append(row)
+    print( lis_reader[0])
     # print("error")
     # SM = Reservoir()
     # Property = [SM.Date, SM.Inflow, SM.Outflow]

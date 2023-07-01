@@ -141,3 +141,20 @@ class Processed_Data():
     def _ForcastNormal(self, Fors):
         return self.sc.transform(Fors)
 
+if __name__ == '__main__':
+    path ='C:/Users/309/Documents/GitHub/TPB Code/Seq2Seq/best model'
+    MP = '/0530-M/(1)'
+    LP = '/0525-L/3128(5)'
+    BP = '/0525-B/364(5)'
+    SP = '/0525-364(3)/364(3)'
+    new_dict = {'Model':[],'RMSE':[],'MAE':[],'CE':[],'CC':[], 'MSLE':[]}
+    
+    for i,name in zip([MP,LP,BP,SP],['SVM','LSTM','BiLSTM','Seq2Seq']):
+        d = pd.read_csv(f'{path}{i}(train)index.csv')
+        res = dataFunction.Index(d.Observation,d.Forcast)
+        new_dict['Model'].append(name)
+        new_dict['RMSE'].append(res['RMSE'])
+        new_dict['MAE'].append(res['MAE'])
+        new_dict['CC'].append(res['CC'])
+        new_dict['CE'].append(res['CE'])
+    pd.DataFrame(new_dict).to_csv(f"{path}/IndexAll_modify.csv",index=False)

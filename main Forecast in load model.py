@@ -68,11 +68,11 @@ for i in range(1,24):
 
 # 檔名
 subtitle = "0525"
-num = 5
+num = 3
 [R, SMO, FT, T, WL] = [3, 3, 1, 3, 10]
 # SMI = 3
-layer = [128, 256, 128]   #[64,128,64],[128,256,128],[128,256]
-name = "LSTM" #,"RNN","SVM","Seq2Seq" ,"BiLSTM","LSTM"
+layer = [64,128,64]   #[64,128,64],[128,256,128],[128,256]
+name = "Seq2Seq" #,"RNN","SVM","Seq2Seq" ,"BiLSTM","LSTM"
 TimeStep = 3
 
 # MSF 
@@ -110,16 +110,9 @@ NPara.ModelName = name
 NPara.FeatureN = len(input) #7
 path = f"{name}\{TimeStep}\{subtitle}"
 # for para in []
-GP = GPara()
-GP.activate = 'relu'
-GP.btcsz = 16 #16 或 32
-GP.opt =  'rmsprop' #'rmsprop' 'adam'
-GP.epochs = 100
-GP.loss = "mae" #mae msle
-GP.lr = 0.00005
 savePath = f"{len(layer)}{layer[0]}({num})"
 # savePath = f"{len(layer)}{layer[0]}(bi-bi)"
-newModel = deepLearning(name, NPara, GP, layer)
+
 
 CheckFile(f"{path}")
 ##存檔
@@ -142,10 +135,10 @@ Y_Inv = Npr._InverseCol(Y_test)
 
 
 # 鬍鬚圖&每條歷線指標(check t-1, t+1正確) 
-Ty = ["Megi", "Lekima", "Mitag"] #"Mitag","Megi", "Lekima"
-Starttime = [121, 430, 584] #起始點  #584, 121, 430
+Ty = ["Megi", "Lekima" ,"Mitag"] #"Megi", "Mitag", "Lekima"
+Starttime = [121, 430, 584] #起始點  #[121, 430, 584]
 for ty, starttime in zip(Ty, Starttime):
-    SPM = ImportCSV(f"{ty}SPM",None)
+    SPM = ImportCSV(f"C:\\Users\\309\\Documents\\台北橋石門入流量預報_雨量預報\\SPM_{ty}",None)
     SMOmsf = SPM
     endLength = 65-12 #往後長度 +12 
     obs = Y_Inv[starttime:starttime+endLength+12+12]
@@ -182,7 +175,7 @@ for ty, starttime in zip(Ty, Starttime):
             forcasting = Prediction(fitModel, NPara.ModelName, new_x)
             F_Inv = Npr._InverseCol(forcasting) 
             temp.append(np.reshape(F_Inv,(1))[0])
-        d = dataFunction.Index(np.array(obs[Time-1:Time+12-1]),np.array(temp))
+        d = dataFunction.Index(np.array(obs[Time-1:Time+12+12-1]),np.array(temp))
         index12["RMSE"].append(d["RMSE"])
         index12["MAE"].append(d["MAE"])
         index12["CC"].append(d["CC"])
@@ -194,10 +187,10 @@ for ty, starttime in zip(Ty, Starttime):
             N+=1 
         Single.append(temp)
     df = pd.DataFrame( Single )
-    DF2CSV(df, f"{path}\{savePath}{ty}R")
+    DF2CSV(df, f"{path}\{savePath}{ty}_P3t24")
 
-    plotEventMSF(df.T,f"{path}\{savePath}R",xlength = endLength+12, eventName = ty)
-    # DF2CSVH(pd.DataFrame(index12), f"{path}\{savePath}{ty}loadindex")
+    plotEventMSF(df.T,f"{path}\{savePath}_P3t24",xlength = endLength+12+12, eventName = ty)
+    DF2CSVH(pd.DataFrame(index12), f"{path}\{savePath}{ty}index_P3t24")
                             
                             
                             # # 算t+1~t+12的指標
